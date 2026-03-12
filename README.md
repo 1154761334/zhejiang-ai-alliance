@@ -1,4 +1,4 @@
-# 浙江省 AI 智能体产业发展联盟 — 官方平台
+#  AI 智能体产业发展联盟 — 平台网站
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)

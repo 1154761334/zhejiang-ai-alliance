@@ -7,7 +7,7 @@
 
 ### 第一阶段：后端接口与业务逻辑层 (API Validation)
 **重点**：验证数据的完整性、安全隔离性和计算逻辑的准确性。
-- **工具**：`node test-workflow-api.mjs` (扩展脚本)
+- **工具**：`node backend/scripts/test-workflow-api.mjs` (扩展脚本)
 - **核心用例**：
   - [ ] **鉴权与隔离**：验证非 ADMIN 角色无法调用 `getAllCompaniesForExport` 及修改他人账号。
   - [ ] **密码更新逻辑**：验证新旧密码校验及 Directus 用户状态更新。

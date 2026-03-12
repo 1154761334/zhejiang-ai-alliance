@@ -1,0 +1,11 @@
+{
+  "name": "backend-scripts",
+  "version": "1.0.0",
+  "description": "Management scripts for Directus",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@directus/sdk": "^21.2.0",
+    "dotenv": "^16.4.5"
+  }
+}

@@ -1,6 +1,6 @@
 # 部署与运维指南 (Deployment Guide)
 
-> 更新日期: 2026-03-11
+> 更新日期: 2026-03-12
 
 ## 1. 环境准备
 - **Docker & Compose**: 用于整体环境一键交付。
@@ -19,9 +19,18 @@ docker-compose up -d
 ### 2.2 系统初始化 (关键步骤)
 项目内置了多个自动化脚本，部署后请按顺序执行：
 
-1. **结构初始化**: `node setup-survey-schema.mjs` (创建 5 大核心集合与字段)。
-2. **账号初始化**: `node enable-registration.mjs` (开启公网注册，并获取 User 角色 ID)。
-3. **内容填充**: `node seed-articles.mjs` (录入初始官网新闻)。
+```bash
+cd backend/scripts
+
+# 1. 结构初始化 (创建 5 大核心集合与字段)
+node setup-survey-schema.mjs
+
+# 2. 账号初始化 (开启公网注册，并获取 User 角色 ID)
+node enable-registration.mjs
+
+# 3. 内容填充 (录入初始官网新闻)
+node seed-articles.mjs
+```
 
 ## 3. 环境变量清单
 

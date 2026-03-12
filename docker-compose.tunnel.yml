@@ -1,0 +1,32 @@
+version: '3'
+services:
+  caddy:
+    image: caddy:latest
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    networks:
+      - zhejiang-ai-alliance_default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: always
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "caddy:80"
+    ports:
+      - "4040:4040"
+    networks:
+      - zhejiang-ai-alliance_default
+    depends_on:
+      - caddy
+
+networks:
+  zhejiang-ai-alliance_default:
+    external: true

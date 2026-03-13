@@ -28,12 +28,11 @@ export default {
             if (!user) return null
 
             // Map Directus Role ID to App Roles
-            const rolesMap: Record<string, string> = {
-              "e2a58ff1-ded2-41db-9efe-025f604e533d": "ADMIN",
-              "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "ADMIN", // Secretariat is also ADMIN for now
-              "e3e82743-f4f1-40ea-bf50-deb2048678b5": "MEMBER",
-              "cbdd77bf-6089-4b67-9919-3eebfd39404c": "USER",
-            };
+            const rolesMap: Record<string, string> = {};
+            if (env.DIRECTUS_ADMIN_ROLE_ID) rolesMap[env.DIRECTUS_ADMIN_ROLE_ID] = "ADMIN";
+            if (env.DIRECTUS_SECRETARIAT_ROLE_ID) rolesMap[env.DIRECTUS_SECRETARIAT_ROLE_ID] = "ADMIN";
+            if (env.DIRECTUS_MEMBER_ROLE_ID) rolesMap[env.DIRECTUS_MEMBER_ROLE_ID] = "MEMBER";
+            if (env.DIRECTUS_USER_ROLE_ID) rolesMap[env.DIRECTUS_USER_ROLE_ID] = "USER";
 
             return {
               id: user.id,

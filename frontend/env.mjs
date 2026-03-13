@@ -14,6 +14,10 @@ export const env = createEnv({
     RESEND_API_KEY: z.string().min(1),
     EMAIL_FROM: z.string().min(1),
     DIRECTUS_STATIC_TOKEN: z.string().optional(),
+    DIRECTUS_ADMIN_ROLE_ID: z.string().optional(),
+    DIRECTUS_SECRETARIAT_ROLE_ID: z.string().optional(),
+    DIRECTUS_MEMBER_ROLE_ID: z.string().optional(),
+    DIRECTUS_USER_ROLE_ID: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
@@ -31,5 +35,9 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     DIRECTUS_STATIC_TOKEN: process.env.DIRECTUS_STATIC_TOKEN,
+    DIRECTUS_ADMIN_ROLE_ID: process.env.DIRECTUS_ADMIN_ROLE_ID,
+    DIRECTUS_SECRETARIAT_ROLE_ID: process.env.DIRECTUS_SECRETARIAT_ROLE_ID,
+    DIRECTUS_MEMBER_ROLE_ID: process.env.DIRECTUS_MEMBER_ROLE_ID,
+    DIRECTUS_USER_ROLE_ID: process.env.DIRECTUS_USER_ROLE_ID,
   },
 });

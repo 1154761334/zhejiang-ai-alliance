@@ -1,21 +1,32 @@
-"use server";
-
 import { auth } from "@/auth";
-import { createDirectus, rest, staticToken, createItem, updateItem } from "@directus/sdk";
+import { createDirectus, rest, staticToken, createItem, updateItem, readItem, deleteItems, readItems } from "@directus/sdk";
 import { revalidatePath } from "next/cache";
+import { surveyFormSchema } from "@/components/dashboard/survey-steps/schema";
 
-const client = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
+// Custom schema to match lib/directus.ts
+interface Schema {
+    companies: any[];
+    products: any[];
+    case_studies: any[];
+    survey_needs: any[];
+    compliance_risks: any[];
+}
+
+const client = createDirectus<any>(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
   .with(staticToken(process.env.DIRECTUS_STATIC_TOKEN || ""))
   .with(rest());
 
-export async function submitSurvey(data: any, status: "draft" | "pending_review", initialId?: string) {
+export async function submitSurvey(rawValues: any, status: "draft" | "pending_review", initialId?: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       throw new Error("Unauthorized");
     }
 
-    const payload = {
+    // 1. Server-side Validation
+    const data = surveyFormSchema.parse(rawValues);
+
+    const payload: any = {
       status: status,
       company_name: data.company_name,
       credit_code: data.credit_code,
@@ -34,44 +45,84 @@ export async function submitSurvey(data: any, status: "draft" | "pending_review"
       contact_phone: data.contact_phone,
       contact_email: data.contact_email,
       contact_preference: data.contact_preference,
-      user_created: session.user.id, // Explicitly set owner if creating
     };
 
-    let company;
+    let companyId = initialId;
 
     if (initialId) {
+      // 2. Ownership & IDOC Check
+      const existing = await client.request(readItem("companies", initialId, { fields: ["user_created"] }));
+      if (!existing || existing.user_created !== session.user.id) {
+        throw new Error("Forbidden: You do not own this record");
+      }
+
       // Update existing
-      // @ts-ignore
-      company = await client.request(updateItem("companies", initialId, payload));
+      await client.request(updateItem("companies", initialId, payload));
+
+      // 3. Sync Child Entities (Wipe and Re-create for nested tables to ensure consistency)
+      // Products
+      await client.request(deleteItems("products", { filter: { company_id: { _eq: initialId } } }));
+      // Case Studies
+      await client.request(deleteItems("case_studies", { filter: { company_id: { _eq: initialId } } }));
+      // Needs (Using readItems because we filter by company_id)
+      const existingNeeds = await client.request(readItems("survey_needs", { 
+        filter: { company_id: { _eq: initialId } },
+        limit: 1
+      }));
+      if (existingNeeds && (existingNeeds as any[]).length > 0) {
+        await client.request(deleteItems("survey_needs", { filter: { company_id: { _eq: initialId } } }));
+      }
+      // Compliance
+      await client.request(deleteItems("compliance_risks", { filter: { company_id: { _eq: initialId } } }));
+
     } else {
-      // Create new
-      // @ts-ignore
-      company = await client.request(createItem("companies", payload));
+      // 2.5 Check if user already has a company record (One Company per User constraint)
+      const existingCompany = await client.request(readItems("companies", {
+        filter: { user_created: { _eq: session.user.id } },
+        limit: 1,
+        fields: ["id"]
+      }));
+
+      if (existingCompany && (existingCompany as any[]).length > 0) {
+        throw new Error("You already have an established company profile. Please update the existing one.");
+      }
+
+      // Create new - 显式传递 UUID 避免数据库默认值问题
+      payload.user_created = session.user.id;
+      payload.id = crypto.randomUUID();
+      const company = await client.request(createItem("companies", payload)) as any;
+      companyId = company.id;
     }
 
-    if (company && company.id && !initialId) {
-      // Handle nested relations for new submission
-      
+    // 4. Populate/Update Child Entities
+    if (companyId) {
       // Products
       if (data.products && data.products.length > 0) {
         for (const p of data.products) {
-           // @ts-ignore
-           await client.request(createItem("products", { ...p, company_id: company.id }));
+          await client.request(createItem("products", { 
+            ...p, 
+            id: crypto.randomUUID(),
+            company_id: companyId 
+          }));
         }
       }
 
       // Cases
       if (data.case_studies && data.case_studies.length > 0) {
         for (const c of data.case_studies) {
-           // @ts-ignore
-           await client.request(createItem("case_studies", { ...c, company_id: company.id, is_live: c.is_live || false }));
+          await client.request(createItem("case_studies", { 
+            ...c, 
+            id: crypto.randomUUID(),
+            company_id: companyId, 
+            is_live: c.is_live || false 
+          }));
         }
       }
 
       // Needs
-      // @ts-ignore
       await client.request(createItem("survey_needs", {
-        company_id: company.id,
+        id: crypto.randomUUID(),
+        company_id: companyId,
         financing_need: data.financing_need,
         market_need: data.market_need,
         tech_need: data.tech_need,
@@ -81,9 +132,9 @@ export async function submitSurvey(data: any, status: "draft" | "pending_review"
       }));
 
       // Compliance
-      // @ts-ignore
       await client.request(createItem("compliance_risks", {
-        company_id: company.id,
+        id: crypto.randomUUID(),
+        company_id: companyId,
         data_security_measures: data.data_security_measures,
         has_mlps_certification: data.has_mlps_certification,
         processes_pii: data.processes_pii
@@ -91,7 +142,7 @@ export async function submitSurvey(data: any, status: "draft" | "pending_review"
     }
 
     revalidatePath("/dashboard");
-    return { status: "success", id: company.id };
+    return { status: "success", id: companyId };
   } catch (error: any) {
     console.error("Action error (submitSurvey):", error);
     return { status: "error", message: error.message };

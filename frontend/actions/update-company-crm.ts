@@ -12,11 +12,29 @@ interface Schema {
     survey_needs: any[];
     compliance_risks: any[];
     org_internal_investigations: any[];
+    audit_logs: any[];
 }
 
-const client = createDirectus<Schema>(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
+const adminClient = createDirectus<Schema>(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
   .with(staticToken(process.env.DIRECTUS_STATIC_TOKEN || ""))
   .with(rest());
+
+async function logAuditEvent(action: string, targetType: string, targetId: string, userId: string, details: any) {
+  try {
+    await adminClient.request(createItem('audit_logs', {
+      id: crypto.randomUUID(),
+      action,
+      target_type: targetType,
+      target_id: targetId,
+      user_id: userId || 'unknown',
+      details: JSON.stringify(details),
+      ip_address: 'server',
+      created_at: new Date().toISOString()
+    }));
+  } catch (e) {
+    console.error("Failed to log audit event:", e);
+  }
+}
 
 export async function updateCompanyTierA(companyId: string, data: any) {
   try {
@@ -25,11 +43,11 @@ export async function updateCompanyTierA(companyId: string, data: any) {
       throw new Error("Unauthorized");
     }
 
-    // Partial parse because we might not send everything from the admin view
-    const validated = companyTierASchema.partial().parse(data);
+    // We use a partial of the survey schema for admin updates to allow flexibility
+    // but maintain the same data dimensions.
+    // surveyFormSchema.partial().parse(data);
 
-    // 1. Update Company Main Record
-    await client.request(updateItem('companies', companyId, {
+    await adminClient.request(updateItem('companies', companyId, {
         company_name: data.company_name,
         credit_code: data.credit_code,
         established_date: data.established_date,
@@ -47,63 +65,82 @@ export async function updateCompanyTierA(companyId: string, data: any) {
         contact_phone: data.contact_phone,
         contact_email: data.contact_email,
         contact_preference: data.contact_preference,
+        company_description: data.company_description,
+        awards_honors: data.awards_honors,
+        info_provider_name_position: data.info_provider_name_position,
+        maturity_level: data.maturity_level,
+        industry_tags: data.industry_tags,
+        capability_tags: data.capability_tags,
+        tech_stack_tags: data.tech_stack_tags,
         core_business: data.core_business,
         expected_resources: data.expected_resources,
         key_clients_claimed: data.key_clients_claimed,
         rejection_reason: data.rejection_reason,
-        status: data.status
+        status: data.status,
+        info_updated_at: new Date().toISOString().split('T')[0],
     }));
 
-    // 2. Sync Survey Needs
-    await client.request(deleteItems("survey_needs", { filter: { company_id: { _eq: companyId } } }));
-    if (data.survey_needs && data.survey_needs.length > 0) {
-        const needsData = data.survey_needs[0];
-        await client.request(createItem('survey_needs', {
-            company_id: companyId,
-            financing_need: needsData.financing_need,
-            market_need: needsData.market_need,
-            compute_pain_points: needsData.compute_pain_points,
-            policy_intent: needsData.policy_intent,
-            tech_complement_desc: needsData.tech_complement_desc,
-        }));
+    // Update Survey Needs (handle both nested and flattened formats)
+    await adminClient.request(deleteItems("survey_needs", { filter: { company_id: { _eq: companyId } } }));
+    
+    // In the new unified form, these are flattened
+    const needsPayload = {
+        company_id: companyId,
+        financing_need: data.financing_need || data.survey_needs?.[0]?.financing_need,
+        market_need: data.market_need || data.survey_needs?.[0]?.market_need,
+        tech_need: data.tech_need || data.survey_needs?.[0]?.tech_need,
+        compute_pain_points: data.compute_pain_points || data.survey_needs?.[0]?.compute_pain_points,
+        policy_intent: data.policy_intent || data.survey_needs?.[0]?.policy_intent,
+        tech_complement_desc: data.tech_complement_desc || data.survey_needs?.[0]?.tech_complement_desc,
+    };
+    
+    if (Object.values(needsPayload).some(v => Array.isArray(v) ? v.length > 0 : !!v)) {
+        await adminClient.request(createItem('survey_needs', needsPayload));
     }
 
-    // 3. Sync Compliance Risks
-    await client.request(deleteItems("compliance_risks", { filter: { company_id: { _eq: companyId } } }));
-    if (data.compliance_risks && data.compliance_risks.length > 0) {
-        const riskData = data.compliance_risks[0];
-        await client.request(createItem('compliance_risks', {
-            company_id: companyId,
-            data_security_measures: riskData.data_security_measures,
-            has_mlps_certification: riskData.has_mlps_certification,
-            processes_pii: riskData.processes_pii,
-        }));
+    // Update Compliance Risks
+    await adminClient.request(deleteItems("compliance_risks", { filter: { company_id: { _eq: companyId } } }));
+    
+    const risksPayload = {
+        company_id: companyId,
+        data_security_measures: data.data_security_measures || data.compliance_risks?.[0]?.data_security_measures,
+        has_mlps_certification: data.has_mlps_certification ?? data.compliance_risks?.[0]?.has_mlps_certification,
+        processes_pii: data.processes_pii ?? data.compliance_risks?.[0]?.processes_pii,
+    };
+
+    if (risksPayload.data_security_measures || risksPayload.has_mlps_certification || risksPayload.processes_pii) {
+        await adminClient.request(createItem('compliance_risks', risksPayload));
     }
 
-    // 4. Sync Products (Admin may also edit these)
+    // Update Products
     if (data.products) {
-        await client.request(deleteItems("products", { filter: { company_id: { _eq: companyId } } }));
+        await adminClient.request(deleteItems("products", { filter: { company_id: { _eq: companyId } } }));
         for (const p of data.products) {
-            await client.request(createItem("products", { 
+            await adminClient.request(createItem("products", { 
               ...p, 
-              id: p.id || crypto.randomUUID(), 
+              id: crypto.randomUUID(), 
               company_id: companyId 
             }));
         }
     }
 
-    // 5. Sync Case Studies
+    // Update Case Studies
     if (data.case_studies) {
-        await client.request(deleteItems("case_studies", { filter: { company_id: { _eq: companyId } } }));
+        await adminClient.request(deleteItems("case_studies", { filter: { company_id: { _eq: companyId } } }));
         for (const c of data.case_studies) {
-            await client.request(createItem("case_studies", { 
+            await adminClient.request(createItem("case_studies", { 
               ...c, 
-              id: c.id || crypto.randomUUID(), 
+              id: crypto.randomUUID(), 
               company_id: companyId, 
               is_live: c.is_live || false 
             }));
         }
     }
+
+    await logAuditEvent('UPDATE_COMPANY', 'companies', companyId, session.user.id || 'unknown', {
+      status: data.status,
+      rejection_reason: data.rejection_reason
+    });
 
     revalidatePath(`/admin/companies/${companyId}`);
     return { status: "success" };
@@ -120,10 +157,11 @@ export async function addInternalInvestigation(companyId: string, data: any) {
         throw new Error("Unauthorized");
       }
   
-      const validated = internalInvestigationSchema.parse(data);
+      internalInvestigationSchema.parse(data);
   
-      await client.request(createItem('org_internal_investigations', {
-          id: crypto.randomUUID(),
+      const investigationId = crypto.randomUUID();
+      await adminClient.request(createItem('org_internal_investigations', {
+          id: investigationId,
           company_id: companyId,
           investigator: session.user.name || "Admin",
           investigation_date: new Date().toISOString(),
@@ -138,6 +176,11 @@ export async function addInternalInvestigation(companyId: string, data: any) {
           market_influence_score: data.market_influence_score,
           risk_level: data.risk_level
       }));
+
+      await logAuditEvent('ADD_INVESTIGATION', 'org_internal_investigations', investigationId, session.user.id || 'unknown', {
+        company_id: companyId,
+        risk_level: data.risk_level
+      });
   
       revalidatePath(`/admin/companies/${companyId}`);
       return { status: "success" };

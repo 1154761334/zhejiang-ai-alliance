@@ -18,6 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { SurveyFormValues } from "./schema";
 
 export function BasicInfoStep() {
@@ -30,9 +31,31 @@ export function BasicInfoStep() {
                     control={control}
                     name="company_name"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                             <FormLabel>单位全称 <span className="text-red-500">*</span></FormLabel>
                             <FormControl><Input placeholder="请填写营业执照上的完整名称" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={control}
+                    name="company_description"
+                    render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                            <FormLabel>企业简介 <span className="text-red-500">*</span></FormLabel>
+                            <FormControl><Input placeholder="简要描述企业核心业务与定位" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={control}
+                    name="awards_honors"
+                    render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                            <FormLabel>曾获荣誉 / 资质</FormLabel>
+                            <FormControl><Input placeholder="例如：国家高新技术企业、省专精特新等" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -52,9 +75,15 @@ export function BasicInfoStep() {
                     control={control}
                     name="established_date"
                     render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>成立时间 <span className="text-red-500">*</span></FormLabel>
-                            <FormControl><Input type="date" {...field} /></FormControl>
+                        <FormItem className="flex flex-col">
+                            <FormLabel className="mb-2">成立时间 <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                                <DatePicker 
+                                    value={field.value} 
+                                    onChange={field.onChange}
+                                    placeholder="请选择成立日期"
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -106,12 +135,13 @@ export function BasicInfoStep() {
                         <FormItem>
                             <FormLabel>企业性质 <span className="text-red-500">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="选择性质" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    <SelectItem value="private">民营</SelectItem>
-                                    <SelectItem value="state_owned">国企</SelectItem>
+                                    <SelectItem value="private">民营企业</SelectItem>
+                                    <SelectItem value="state_owned">国有企业</SelectItem>
                                     <SelectItem value="institution">事业单位</SelectItem>
-                                    <SelectItem value="university">高校院所</SelectItem>
+                                    <SelectItem value="academic">高校院所</SelectItem>
+                                    <SelectItem value="other">其他</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -123,7 +153,7 @@ export function BasicInfoStep() {
                     name="employee_count"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>员工规模(人) <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>员工规模 (人) <span className="text-red-500">*</span></FormLabel>
                             <FormControl><Input type="number" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
@@ -134,7 +164,7 @@ export function BasicInfoStep() {
                     name="rnd_count"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>研发人数(人) <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>研发人数 (人) <span className="text-red-500">*</span></FormLabel>
                             <FormControl><Input type="number" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
@@ -145,8 +175,17 @@ export function BasicInfoStep() {
                     name="revenue_range"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>最近一年营收(万元)</FormLabel>
-                            <FormControl><Input placeholder="选填" {...field} /></FormControl>
+                            <FormLabel>最近一年营收区间 (万元)</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="0-500">500万以下</SelectItem>
+                                    <SelectItem value="500-2000">500万-2000万</SelectItem>
+                                    <SelectItem value="2000-5000">2000万-5000万</SelectItem>
+                                    <SelectItem value="5000-10000">5000万-1亿</SelectItem>
+                                    <SelectItem value="10000+">1亿以上</SelectItem>
+                                </SelectContent>
+                            </Select>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -158,27 +197,23 @@ export function BasicInfoStep() {
                     control={control}
                     name="tracks"
                     render={() => (
-                        <FormItem>
-                            <FormLabel>细分赛道 (多选) <span className="text-red-500">*</span></FormLabel>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {["智能制造", "智慧政务", "金融科技", "医疗健康", "教育科研", "数字安防", "智能家居", "跨境电商", "现代农业", "元宇宙/数字人"].map((item) => (
+                        <FormItem className="md:col-span-2">
+                            <FormLabel>细分赛道 (可多选) <span className="text-red-500">*</span></FormLabel>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                {["智能制造", "智慧政务", "智慧康养", "新能源", "金融科技", "智慧物流", "文娱教育", "其他"].map((track) => (
                                     <FormField
-                                        key={item}
+                                        key={track}
                                         control={control}
                                         name="tracks"
                                         render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-slate-50 transition-colors">
+                                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                                 <FormControl>
                                                     <Checkbox
-                                                        checked={field.value?.includes(item)}
-                                                        onCheckedChange={(checked) => {
-                                                            return checked
-                                                                ? field.onChange([...(field.value || []), item])
-                                                                : field.onChange((field.value || []).filter((v) => v !== item));
-                                                        }}
+                                                        checked={field.value?.includes(track)}
+                                                        onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), track]) : field.onChange(field.value?.filter((v) => v !== track))}
                                                     />
                                                 </FormControl>
-                                                <FormLabel className="cursor-pointer font-normal flex-1">{item}</FormLabel>
+                                                <FormLabel className="font-normal">{track}</FormLabel>
                                             </FormItem>
                                         )}
                                     />
@@ -193,14 +228,14 @@ export function BasicInfoStep() {
                     control={control}
                     name="role"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                             <FormLabel>企业角色定位 <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {["基础模型层", "工具/平台层", "应用解决方案层", "算力设施层"].map((item) => (
-                                        <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-slate-50 transition-colors" key={item}>
-                                            <FormControl><RadioGroupItem value={item} /></FormControl>
-                                            <FormLabel className="cursor-pointer font-normal flex-1">{item}</FormLabel>
+                                    {["基础模型层", "工具平台层", "应用解决方案层", "算力设施层"].map((roleItem) => (
+                                        <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-slate-50 transition-colors" key={roleItem}>
+                                            <FormControl><RadioGroupItem value={roleItem} /></FormControl>
+                                            <FormLabel className="cursor-pointer font-normal flex-1">{roleItem}</FormLabel>
                                         </FormItem>
                                     ))}
                                 </RadioGroup>
@@ -238,6 +273,18 @@ export function BasicInfoStep() {
                         <FormMessage />
                     </FormItem>
                 )} />
+                <FormField control={control} name="info_provider_name_position" render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                        <FormLabel>信息提供人姓名与职务</FormLabel>
+                        <FormControl><Input placeholder="例如：张三 办公室主任" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                <FormItem className="md:col-span-2">
+                    <FormLabel>信息更新时间</FormLabel>
+                    <FormControl><Input readOnly value={new Date().toISOString().split('T')[0]} className="bg-slate-50" /></FormControl>
+                    <p className="text-[10px] text-slate-400 mt-1">系统将自动记录填报日期</p>
+                </FormItem>
             </div>
         </div>
     );

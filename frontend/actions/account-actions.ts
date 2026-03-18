@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { passwordChangeSchema } from "@/lib/validations/account";
 import { userNameSchema } from "@/lib/validations/user";
 
-const client = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
+const adminClient = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
   .with(staticToken(process.env.DIRECTUS_STATIC_TOKEN || ""))
   .with(rest());
 
@@ -17,12 +17,9 @@ export async function updatePassword(data: { currentPassword?: string; newPasswo
       throw new Error("Unauthorized");
     }
 
-    // Server-side validation
     passwordChangeSchema.parse(data);
 
-    // Directus updateUser can update password
-    // @ts-ignore
-    await client.request(updateUser(session.user.id, {
+    await adminClient.request(updateUser(session.user.id, {
       password: data.newPassword
     }));
 
@@ -40,11 +37,9 @@ export async function updateProfile(data: { name: string }) {
       throw new Error("Unauthorized");
     }
 
-    // Server-side validation
     userNameSchema.parse(data);
 
-    // @ts-ignore
-    await client.request(updateUser(session.user.id, {
+    await adminClient.request(updateUser(session.user.id, {
       first_name: data.name
     }));
 

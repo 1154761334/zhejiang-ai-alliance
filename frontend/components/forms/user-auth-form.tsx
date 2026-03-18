@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { cn } from "@/lib/utils";
-import { loginSchema } from "@/lib/validations/auth"; // Use loginSchema here
+import { loginSchema, registerSchema } from "@/lib/validations/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,15 +19,16 @@ interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   type?: string;
 }
 
-type FormData = z.infer<typeof loginSchema>; // Use loginSchema
-
 export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
+  const schema = type === "register" ? registerSchema : loginSchema;
+  type FormData = z.infer<typeof schema>;
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(schema),
   });
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const searchParams = useSearchParams();

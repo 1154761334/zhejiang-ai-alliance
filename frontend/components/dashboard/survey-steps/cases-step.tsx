@@ -19,6 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { SurveyFormValues } from "./schema";
 
 export function CasesStep() {
@@ -72,7 +73,17 @@ export function CasesStep() {
                             control={control}
                             name={`case_studies.${index}.implementation_date`}
                             render={({ field }) => (
-                                <FormItem><FormLabel>交付/上线时间 <span className="text-red-500">*</span></FormLabel><FormControl><Input type="month" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem className="flex flex-col">
+                                    <FormLabel className="mb-2">交付/上线时间 <span className="text-red-500">*</span></FormLabel>
+                                    <FormControl>
+                                        <DatePicker 
+                                            value={field.value} 
+                                            onChange={field.onChange}
+                                            placeholder="选择交付日期"
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
                             )}
                         />
 
@@ -94,11 +105,41 @@ export function CasesStep() {
 
                         <FormField
                             control={control}
+                            name={`case_studies.${index}.data_types`}
+                            render={() => (
+                                <FormItem className="md:col-span-2">
+                                    <FormLabel>使用的数据类型 (多选)</FormLabel>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                        {["结构化", "文本", "图像", "视频", "语音", "传感器"].map((opt) => (
+                                            <FormField
+                                                key={opt}
+                                                control={control}
+                                                name={`case_studies.${index}.data_types`}
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={field.value?.includes(opt)}
+                                                                onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), opt]) : field.onChange((field.value || []).filter((v) => v !== opt))}
+                                                            />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">{opt}</FormLabel>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        ))}
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
                             name={`case_studies.${index}.is_live`}
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center space-x-2 space-y-0 p-2">
                                     <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                    <FormLabel className="font-normal text-base">目前是否稳定上线运行？</FormLabel>
+                                    <FormLabel className="font-normal text-base text-blue-600">目前是否正式上线运行？</FormLabel>
                                 </FormItem>
                             )}
                         />
@@ -108,15 +149,15 @@ export function CasesStep() {
                             name={`case_studies.${index}.evidence_type`}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>可供核查的佐证材料类型</FormLabel>
+                                    <FormLabel>验收或佐证材料类型</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             <SelectItem value="report">验收报告</SelectItem>
-                                            <SelectItem value="bid">中标公告原文/链接</SelectItem>
-                                            <SelectItem value="news">公开媒体报道</SelectItem>
-                                            <SelectItem value="certificate">客户证明信</SelectItem>
-                                            <SelectItem value="none">暂无公开材料</SelectItem>
+                                            <SelectItem value="bid">中标公告</SelectItem>
+                                            <SelectItem value="news">公开报道</SelectItem>
+                                            <SelectItem value="certificate">客户证明</SelectItem>
+                                            <SelectItem value="none">暂无</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -128,7 +169,15 @@ export function CasesStep() {
                             control={control}
                             name={`case_studies.${index}.quantified_results`}
                             render={({ field }) => (
-                                <FormItem className="md:col-span-2"><FormLabel>量化业务效果指标 (例: 降本XX, 准确率提升XX)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem className="md:col-span-2"><FormLabel>量化业务效果指标 (降本/增效/提质等)</FormLabel><FormControl><Textarea placeholder="例如：节省人力30%, 准确率提升至99%..." {...field} /></FormControl><FormMessage /></FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name={`case_studies.${index}.reusability`}
+                            render={({ field }) => (
+                                <FormItem className="md:col-span-2"><FormLabel>可复用性说明 (适用单位及前置条件)</FormLabel><FormControl><Input placeholder="简述该方案如何快速复制到其他类似场景" {...field} /></FormControl><FormMessage /></FormItem>
                             )}
                         />
                     </div>

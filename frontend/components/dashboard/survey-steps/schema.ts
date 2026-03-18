@@ -3,11 +3,13 @@ import * as z from "zod";
 export const surveyFormSchema = z.object({
     // Step 1: Basic Info
     company_name: z.string().min(2, "单位名称至少需要2个字符"),
+    company_description: z.string().min(1, "请填写企业简介"),
+    awards_honors: z.string().optional(),
     credit_code: z.string().length(18, "请输入18位统一社会信用代码"),
     established_date: z.string().min(1, "请填写成立时间"),
     region: z.string({ required_error: "请选择所在区域" }),
     address: z.string().min(1, "请填写详细办公地址"),
-    website: z.string().url("请输入有效的网址，包含 http:// 或 https://"),
+    website: z.string().url("请输入有效的网址，包含 http:// 或 https://").or(z.literal("")),
     company_type: z.string({ required_error: "请选择企业性质" }),
     employee_count: z.coerce.number().min(1, "请输入员工规模"),
     rnd_count: z.coerce.number().min(0, "请输入研发人数"),
@@ -19,6 +21,7 @@ export const surveyFormSchema = z.object({
     contact_phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
     contact_email: z.string().email("请输入正确的邮箱"),
     contact_preference: z.string({ required_error: "请选择对接偏好" }),
+    info_provider_name_position: z.string().optional(),
 
     // Step 2: Products
     products: z
@@ -26,7 +29,7 @@ export const surveyFormSchema = z.object({
             z.object({
                 name: z.string().min(1, "产品名称必填"),
                 form_factor: z.string({ required_error: "请选择形态" }),
-                maturity_stage: z.string({ required_error: "请选择成熟度" }),
+                maturity_stage: z.string({ required_error: "请选择成熟度阶段" }),
                 description: z.string().max(200, "描述不能超过200字"),
                 tech_stack: z.string().optional(),
                 model_preference: z.array(z.string()).optional(),
@@ -72,6 +75,14 @@ export const surveyFormSchema = z.object({
     data_security_measures: z.string().min(1, "请简述数据安全措施"),
     has_mlps_certification: z.boolean().default(false),
     processes_pii: z.boolean().default(false),
+    confidentiality_commitment: z.boolean().default(false),
+
+    delivery_risks: z.string().optional(),
+    risk_mitigation: z.string().optional(),
+    industry_tags: z.array(z.string()).optional(),
+    capability_tags: z.array(z.string()).optional(),
+    tech_stack_tags: z.array(z.string()).optional(),
+    maturity_level: z.string().optional(),
 });
 
 export type SurveyFormValues = z.infer<typeof surveyFormSchema>;

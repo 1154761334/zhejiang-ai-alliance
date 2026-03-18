@@ -99,15 +99,15 @@ test.describe('P0 核心全链路冒烟测试', () => {
 # 执行完整 P0 冒烟测试
 npx playwright test tests/e2e/core-smoke-unified.spec.ts --project=chromium
 
-# 手动核验 Directus 落库情况
-node tests/scripts/check-all-selects-v3.mjs
+# 执行分模块自动化测试
+npx playwright test tests/e2e/01-auth.spec.ts    # 账号体系
+npx playwright test tests/e2e/02-dashboard.spec.ts # 企业填报
+npx playwright test tests/e2e/03-admin.spec.ts     # 秘书处后台
+npx playwright test tests/e2e/05-security.spec.ts  # 安全与 RLS
 ```
 
-### 4.2 诊断脚本工具库
-项目维护了一套专用诊断脚本，用于验证前端 UI 无法察觉的后台逻辑：
-- `check-step2-data.mjs`: 验证产品表单下拉框选项是否真正持久化。
-- `verify-role-config.mjs`: 校验 Directus 角色权限是否锁定。
-- `check-absolute-latest.mjs`: 追踪最新一条入库数据的 `user_created` 归属，防止 Session 碰撞。
+### 4.2 诊断说明
+项目已集成的自动化测试套件涵盖了从前端渲染到后端数据持久化的全过程，原有的临时诊断脚本已整合进 `tests/e2e` 文件夹中，确保持续集成（CI）的统一性。
 
 ---
 

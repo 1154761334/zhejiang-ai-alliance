@@ -198,6 +198,38 @@ export function NeedsStep() {
                         )}
                     />
                 </div>
+
+                <div className="space-y-6 pt-6 border-t">
+                    <FormField
+                        control={control}
+                        name="confidentiality_commitment"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-slate-50">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base font-semibold">涉密与保密承诺</FormLabel>
+                                    <p className="text-sm text-muted-foreground text-rose-600 font-medium">承诺所提供案例及数据均已脱敏，或已获得客户授权可用于联盟内部档案。</p>
+                                </div>
+                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={control}
+                        name="delivery_risks"
+                        render={({ field }) => (
+                            <FormItem><FormLabel>主要交付风险点 (选填)</FormLabel><FormControl><Textarea className="h-20" placeholder="例如：对特定硬件依赖度高、交付周期受第三方影响等..." {...field} /></FormControl><FormMessage /></FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={control}
+                        name="risk_mitigation"
+                        render={({ field }) => (
+                            <FormItem><FormLabel>风险缓解措施 (选填)</FormLabel><FormControl><Textarea className="h-20" placeholder="针对上述风险，企业采取的备選或预防方案..." {...field} /></FormControl><FormMessage /></FormItem>
+                        )}
+                    />
+                </div>
             </div>
         </div>
     );

@@ -27,6 +27,12 @@ export const sidebarLinks: SidebarNavItem[] = [
         badge: 2,
         authorizeOnly: "ADMIN",
       },
+      {
+        href: "/admin/users",
+        icon: "user",
+        title: "账号管理",
+        authorizeOnly: "ADMIN",
+      },
     ],
   },
   {

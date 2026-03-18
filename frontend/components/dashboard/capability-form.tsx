@@ -77,7 +77,7 @@ export function CapabilityForm({ initialData, isLocked = false }: CapabilityForm
   const { errors, touchedFields } = form.formState;
 
   // Common submit handler (handles both Draft and Publish based on status parameter)
-  async function onSubmit(data: SurveyFormValues, status: "draft" | "pending_review") {
+  const onSubmit = async (data: SurveyFormValues, status: "draft" | "pending_review") => {
     if (status === "draft") {
       setIsDrafting(true);
     } else {
@@ -138,6 +138,8 @@ export function CapabilityForm({ initialData, isLocked = false }: CapabilityForm
         } else if (directusError.message) {
           errorMessage = directusError.message;
         }
+      } else if (error.message) {
+        errorMessage = error.message;
       }
 
       toast.error(errorMessage);

@@ -1,7 +1,6 @@
 import authConfig from "@/auth.config";
 import NextAuth, { type DefaultSession } from "next-auth";
 
-// More info: https://authjs.dev/getting-started/typescript#module-augmentation
 declare module "next-auth" {
   interface Session {
     user: {
@@ -15,7 +14,12 @@ export const {
   handlers: { GET, POST },
   auth,
 } = NextAuth({
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60,
+  },
+  secret: process.env.AUTH_SECRET,
+  trustHost: true,
   pages: {
     signIn: "/login",
     // error: "/auth/error",
@@ -39,6 +43,10 @@ export const {
           session.user.accessToken = token.accessToken as string;
         }
 
+        if (token.companyId) {
+          (session.user as any).companyId = token.companyId;
+        }
+
         session.user.name = token.name;
         session.user.image = token.picture;
       }
@@ -51,6 +59,7 @@ export const {
       if (user) {
         token.role = (user as any).role;
         token.accessToken = (user as any).accessToken;
+        token.companyId = (user as any).companyId;
         token.sub = user.id;
       }
       return token;
@@ -79,5 +88,5 @@ export const {
     },
   },
   ...authConfig,
-  // debug: process.env.NODE_ENV !== "production"
+  debug: true
 });

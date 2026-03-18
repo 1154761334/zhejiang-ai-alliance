@@ -17,15 +17,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Copy, Save, Briefcase, SearchCode, History, Printer } from "lucide-react";
+import { Copy, Save, Briefcase, SearchCode, History, Printer, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { updateCompanyTierA, addInternalInvestigation } from "@/actions/update-company-crm";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { evaluateCompanyData } from "@/lib/evaluation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { surveyFormSchema, type SurveyFormValues } from "../dashboard/survey-steps/schema";
+import { BasicInfoStep } from "../dashboard/survey-steps/basic-info-step";
+import { ProductsStep } from "../dashboard/survey-steps/products-step";
+import { CasesStep } from "../dashboard/survey-steps/cases-step";
+import { NeedsStep } from "../dashboard/survey-steps/needs-step";
 
 export function CompanyCrmView({ companyId, initialCompanyData }: { companyId: string; initialCompanyData: any }) {
   const [aTierData, setATierData] = useState(initialCompanyData);
@@ -33,6 +39,46 @@ export function CompanyCrmView({ companyId, initialCompanyData }: { companyId: s
   const [isAddingInvestigation, setIsAddingInvestigation] = useState(false);
   const [isInvestigationDialogOpen, setIsInvestigationDialogOpen] = useState(false);
   const [isSurveyDialogOpen, setIsSurveyDialogOpen] = useState(false);
+
+  // Initialize unified form
+  const form = useForm<SurveyFormValues>({
+    resolver: zodResolver(surveyFormSchema),
+    defaultValues: {
+      company_name: initialCompanyData?.company_name || "",
+      company_description: initialCompanyData?.company_description || "",
+      awards_honors: initialCompanyData?.awards_honors || "",
+      credit_code: initialCompanyData?.credit_code || "",
+      established_date: initialCompanyData?.established_date || "",
+      region: initialCompanyData?.region || "",
+      address: initialCompanyData?.address || "",
+      website: initialCompanyData?.website || "",
+      company_type: initialCompanyData?.company_type || "",
+      employee_count: initialCompanyData?.employee_count || 0,
+      rnd_count: initialCompanyData?.rnd_count || 0,
+      revenue_range: initialCompanyData?.revenue_range || "",
+      tracks: initialCompanyData?.tracks || [],
+      role: initialCompanyData?.role || "",
+      contact_name: initialCompanyData?.contact_name || "",
+      contact_position: initialCompanyData?.contact_position || "",
+      contact_phone: initialCompanyData?.contact_phone || "",
+      contact_email: initialCompanyData?.contact_email || "",
+      contact_preference: initialCompanyData?.contact_preference || "",
+      info_provider_name_position: initialCompanyData?.info_provider_name_position || "",
+      products: initialCompanyData?.products || [],
+      case_studies: initialCompanyData?.case_studies || [],
+      financing_need: initialCompanyData?.survey_needs?.[0]?.financing_need || [],
+      market_need: initialCompanyData?.survey_needs?.[0]?.market_need || [],
+      tech_need: initialCompanyData?.survey_needs?.[0]?.tech_need || [],
+      compute_pain_points: initialCompanyData?.survey_needs?.[0]?.compute_pain_points || [],
+      tech_complement_desc: initialCompanyData?.survey_needs?.[0]?.tech_complement_desc || "",
+      policy_intent: initialCompanyData?.survey_needs?.[0]?.policy_intent || [],
+      data_security_measures: initialCompanyData?.compliance_risks?.[0]?.data_security_measures || "",
+      has_mlps_certification: initialCompanyData?.compliance_risks?.[0]?.has_mlps_certification || false,
+      processes_pii: initialCompanyData?.compliance_risks?.[0]?.processes_pii || false,
+      confidentiality_commitment: initialCompanyData?.confidentiality_commitment || false,
+    },
+  });
+
   const [newInvestigation, setNewInvestigation] = useState({
     actual_capacity: "",
     technical_team_eval: "",
@@ -48,7 +94,13 @@ export function CompanyCrmView({ companyId, initialCompanyData }: { companyId: s
   const handleATierSave = async () => {
     setIsSaving(true);
     try {
-      const result = await updateCompanyTierA(companyId, aTierData);
+      const formValues = form.getValues();
+      const payload = {
+          ...formValues,
+          status: aTierData.status,
+          rejection_reason: aTierData.rejection_reason
+      };
+      const result = await updateCompanyTierA(companyId, payload);
       if (result.status === "success") {
         toast.success("公共信息已同步至数据库，展示已更新。");
       } else {
@@ -126,240 +178,66 @@ export function CompanyCrmView({ companyId, initialCompanyData }: { companyId: s
               <p className="text-xs text-slate-500 mt-1">展示企业填报的全量维度，支持秘书处审核修润与状态变更。</p>
             </div>
           </div>
-          <div className="flex items-center justify-between border-t border-slate-200 border-dashed pt-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-700">业务状态:</span>
-              <Select value={aTierData.status || "pending_review"} onValueChange={(val) => setATierData({...aTierData, status: val})}>
-                  <SelectTrigger className="w-[140px] h-8 text-xs bg-white">
-                      <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="draft">草稿</SelectItem>
-                      <SelectItem value="pending_review">待出访尽调</SelectItem>
-                      <SelectItem value="published">正式入库</SelectItem>
-                      <SelectItem value="rejected">作废退回</SelectItem>
-                  </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-2 border-t border-slate-200 border-dashed pt-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-700">业务状态:</span>
+                  <Select value={aTierData.status || "pending_review"} onValueChange={(val) => setATierData({...aTierData, status: val})}>
+                      <SelectTrigger className="w-[140px] h-8 text-xs bg-white">
+                          <SelectValue placeholder="状态" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="draft">草稿</SelectItem>
+                          <SelectItem value="pending_review">待出访尽调</SelectItem>
+                          <SelectItem value="published">正式入库</SelectItem>
+                          <SelectItem value="rejected">作废退回</SelectItem>
+                      </SelectContent>
+                  </Select>
+                </div>
+                <Button size="sm" onClick={handleATierSave} disabled={isSaving}>
+                  <Save className="w-4 h-4 mr-1" /> 保存全案
+                </Button>
+              </div>
+
+              {aTierData.status === "rejected" && (
+                <div className="space-y-1 mt-1 animate-in fade-in slide-in-from-top-1">
+                  <Label className="text-[10px] text-red-600 font-semibold uppercase">退回理由 (企业可见)</Label>
+                  <Textarea 
+                    className="text-xs h-16 border-red-200 bg-red-50/30" 
+                    placeholder="请输入退回具体理由，告知企业如何修改..."
+                    value={aTierData.rejection_reason || ""}
+                    onChange={(e) => setATierData({...aTierData, rejection_reason: e.target.value})}
+                  />
+                </div>
+              )}
             </div>
-            <Button size="sm" onClick={handleATierSave} disabled={isSaving}>
-              <Save className="w-4 h-4 mr-1" /> 保存全案
-            </Button>
-          </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-1">
-          <Accordion type="multiple" defaultValue={["base", "contact", "business", "relations"]} className="w-full">
-            
-            <AccordionItem value="base" className="px-4 border-b pb-2">
-              <AccordionTrigger className="text-sm text-indigo-700 hover:no-underline">工商基座信息</AccordionTrigger>
-              <AccordionContent className="space-y-3 pt-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs text-slate-500">企业对外全称</Label>
-                    <Input className="h-8 text-sm" value={aTierData.company_name || ""} onChange={(e) => setATierData({...aTierData, company_name: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">信用代码</Label>
-                    <Input className="h-8 text-sm" value={aTierData.credit_code || ""} onChange={(e) => setATierData({...aTierData, credit_code: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">成立时间</Label>
-                    <Input type="date" className="h-8 text-sm" value={aTierData.established_date || ""} onChange={(e) => setATierData({...aTierData, established_date: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">所在区域</Label>
-                    <Input className="h-8 text-sm" value={aTierData.region || ""} onChange={(e) => setATierData({...aTierData, region: e.target.value})} />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs text-slate-500">详细地址</Label>
-                    <Input className="h-8 text-sm" value={aTierData.address || ""} onChange={(e) => setATierData({...aTierData, address: e.target.value})} />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs text-slate-500">官网地址</Label>
-                    <Input className="h-8 text-sm" value={aTierData.website || ""} onChange={(e) => setATierData({...aTierData, website: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">企业类型</Label>
-                    <Input className="h-8 text-sm" value={aTierData.company_type || ""} onChange={(e) => setATierData({...aTierData, company_type: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">营收范围 (万元)</Label>
-                    <Input className="h-8 text-sm" value={aTierData.revenue_range || ""} onChange={(e) => setATierData({...aTierData, revenue_range: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">人员规模</Label>
-                    <Input type="number" className="h-8 text-sm" value={aTierData.employee_count || ""} onChange={(e) => setATierData({...aTierData, employee_count: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">研发人数</Label>
-                    <Input type="number" className="h-8 text-sm" value={aTierData.rnd_count || ""} onChange={(e) => setATierData({...aTierData, rnd_count: Number(e.target.value)})} />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="contact" className="px-4 border-b pb-2 bg-slate-50/50">
-              <AccordionTrigger className="text-sm text-indigo-700 hover:no-underline">高管联络方式 (高密)</AccordionTrigger>
-              <AccordionContent className="space-y-3 pt-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">联系人姓名</Label>
-                    <Input className="h-8 text-sm" value={aTierData.contact_name || ""} onChange={(e) => setATierData({...aTierData, contact_name: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">职务</Label>
-                    <Input className="h-8 text-sm" value={aTierData.contact_position || ""} onChange={(e) => setATierData({...aTierData, contact_position: e.target.value})} />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs text-slate-500">手机号码</Label>
-                    <Input className="h-8 text-sm" value={aTierData.contact_phone || ""} onChange={(e) => setATierData({...aTierData, contact_phone: e.target.value})} />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="business" className="px-4 border-b pb-2">
-              <AccordionTrigger className="text-sm text-indigo-700 hover:no-underline">核心业务与协同诉求</AccordionTrigger>
-              <AccordionContent className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                        <Label className="text-xs text-slate-500">生态角色定位</Label>
-                        <Select value={aTierData.role || ""} onValueChange={(val) => setATierData({...aTierData, role: val})}>
-                            <SelectTrigger className="h-8 text-sm">
-                                <SelectValue placeholder="选择角色" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="provider">智算算力供给方</SelectItem>
-                                <SelectItem value="developer">模型应用开发侧</SelectItem>
-                                <SelectItem value="user">场景需求采买方</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-xs text-slate-500">赛道标签 (逗号分隔)</Label>
-                        <Input className="h-8 text-sm" value={aTierData.tracks?.join(', ') || ""} 
-                            onChange={(e) => setATierData({...aTierData, tracks: e.target.value.split(',').map(s=>s.trim()).filter(Boolean)})} 
-                        />
-                    </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-slate-500">自称核心客户圈 (逗号分隔)</Label>
-                  <Input className="h-8 text-sm" placeholder="例如: 阿里, 腾讯" value={
-                      Array.isArray(aTierData.key_clients_claimed) 
-                        ? aTierData.key_clients_claimed.map((c: any) => c.client_name || c).join(', ') 
-                        : (aTierData.key_clients_claimed || "")
-                  } onChange={(e) => {
-                      setATierData({...aTierData, key_clients_claimed: e.target.value.split(',').map(s=>({client_name: s.trim()}))})
-                  }} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-slate-500">主营业务简介</Label>
-                  <Textarea className="resize-none h-24 text-sm" value={aTierData.core_business || ""} onChange={(e) => setATierData({...aTierData, core_business: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-slate-500">期望从联盟获取的赋能</Label>
-                  <Textarea className="resize-none h-16 text-sm" value={aTierData.expected_resources || ""} onChange={(e) => setATierData({...aTierData, expected_resources: e.target.value})} />
-                </div>
-
-                <div className="space-y-2 pt-4 border-t mt-4 border-dashed">
-                  <h4 className="text-xs font-semibold text-slate-700">需求与赋能意向 (由系统打散在附加表中)</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">融资需求 (逗号分隔)</Label>
-                      <Input className="h-8 text-sm" value={(aTierData.survey_needs?.[0]?.financing_need || []).join(', ')} onChange={(e) => {
-                        const needs = [...(aTierData.survey_needs || [{}])];
-                        needs[0] = { ...needs[0], financing_need: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) };
-                        setATierData({ ...aTierData, survey_needs: needs });
-                      }} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">市场拓展需求 (逗号分隔)</Label>
-                      <Input className="h-8 text-sm" value={(aTierData.survey_needs?.[0]?.market_need || []).join(', ')} onChange={(e) => {
-                        const needs = [...(aTierData.survey_needs || [{}])];
-                        needs[0] = { ...needs[0], market_need: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) };
-                        setATierData({ ...aTierData, survey_needs: needs });
-                      }} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">算力痛点 (逗号分隔)</Label>
-                      <Input className="h-8 text-sm" value={(aTierData.survey_needs?.[0]?.compute_pain_points || []).join(', ')} onChange={(e) => {
-                        const needs = [...(aTierData.survey_needs || [{}])];
-                        needs[0] = { ...needs[0], compute_pain_points: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) };
-                        setATierData({ ...aTierData, survey_needs: needs });
-                      }} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">近期活动意向 (逗号分隔)</Label>
-                      <Input className="h-8 text-sm" value={(aTierData.survey_needs?.[0]?.policy_intent || []).join(', ')} onChange={(e) => {
-                        const needs = [...(aTierData.survey_needs || [{}])];
-                        needs[0] = { ...needs[0], policy_intent: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) };
-                        setATierData({ ...aTierData, survey_needs: needs });
-                      }} />
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs text-slate-500">技术互补诉求描述</Label>
-                      <Textarea className="resize-none h-16 text-sm" value={aTierData.survey_needs?.[0]?.tech_complement_desc || ""} onChange={(e) => {
-                        const needs = [...(aTierData.survey_needs || [{}])];
-                        needs[0] = { ...needs[0], tech_complement_desc: e.target.value };
-                        setATierData({ ...aTierData, survey_needs: needs });
-                      }} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-4 border-t mt-4 border-dashed">
-                  <h4 className="text-xs font-semibold text-slate-700">合规与安全承诺 (合规表)</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs text-slate-500">数据安全措施简述</Label>
-                      <Textarea className="resize-none h-16 text-sm" value={aTierData.compliance_risks?.[0]?.data_security_measures || ""} onChange={(e) => {
-                        const risks = [...(aTierData.compliance_risks || [{}])];
-                        risks[0] = { ...risks[0], data_security_measures: e.target.value };
-                        setATierData({ ...aTierData, compliance_risks: risks });
-                      }} />
-                    </div>
-                    <div className="space-y-1 flex items-center gap-2">
-                      <input type="checkbox" className="h-4 w-4" checked={aTierData.compliance_risks?.[0]?.has_mlps_certification || false} onChange={(e) => {
-                        const risks = [...(aTierData.compliance_risks || [{}])];
-                        risks[0] = { ...risks[0], has_mlps_certification: e.target.checked };
-                        setATierData({ ...aTierData, compliance_risks: risks });
-                      }} />
-                      <Label className="text-xs text-slate-500">已通过等保安全认证</Label>
-                    </div>
-                    <div className="space-y-1 flex items-center gap-2">
-                      <input type="checkbox" className="h-4 w-4" checked={aTierData.compliance_risks?.[0]?.processes_pii || false} onChange={(e) => {
-                        const risks = [...(aTierData.compliance_risks || [{}])];
-                        risks[0] = { ...risks[0], processes_pii: e.target.checked };
-                        setATierData({ ...aTierData, compliance_risks: risks });
-                      }} />
-                      <Label className="text-xs text-slate-500">涉处理用户敏感隐私数据 (PII)</Label>
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="relations" className="px-4 border-b-0 pb-2 bg-slate-50/50">
-              <AccordionTrigger className="text-sm text-indigo-700 hover:no-underline">提报附表清单 (只读索引)</AccordionTrigger>
-              <AccordionContent className="space-y-3 pt-2">
-                <div className="text-xs text-slate-600 space-y-2">
-                    <div className="border border-slate-200 rounded p-2 bg-white flex justify-between items-center pr-3 shadow-sm hover:border-slate-300 transition-colors">
-                        <span className="flex items-center gap-1.5"><span className="text-blue-500">🚀</span> 自研AI产品与解决方案</span>
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700">{aTierData.products?.length || 0} 项</Badge>
-                    </div>
-                    <div className="border border-slate-200 rounded p-2 bg-white flex justify-between items-center pr-3 shadow-sm hover:border-slate-300 transition-colors">
-                        <span className="flex items-center gap-1.5"><span className="text-amber-500">🏆</span> 沉淀的行业标杆案例</span>
-                        <Badge variant="secondary" className="bg-amber-50 text-amber-700">{aTierData.case_studies?.length || 0} 项</Badge>
-                    </div>
-                    <div className="border border-slate-200 rounded p-2 bg-white flex justify-between items-center pr-3 shadow-sm hover:border-slate-300 transition-colors">
-                        <span className="flex items-center gap-1.5"><span className="text-red-500">⚠️</span> 痛点/转型突破口提报</span>
-                        <Badge variant="secondary" className="bg-red-50 text-red-700">{aTierData.survey_needs?.length || 0} 项</Badge>
-                    </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-          </Accordion>
+        <div className="flex-1 overflow-y-auto p-4">
+          <FormProvider {...form}>
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsTrigger value="basic" className="text-xs">基础信息</TabsTrigger>
+                <TabsTrigger value="products" className="text-xs">产品能力</TabsTrigger>
+                <TabsTrigger value="cases" className="text-xs">场景案例</TabsTrigger>
+                <TabsTrigger value="needs" className="text-xs">合规需求</TabsTrigger>
+              </TabsList>
+              <div className="space-y-4">
+                <TabsContent value="basic" className="mt-0 border p-4 rounded-lg">
+                  <BasicInfoStep />
+                </TabsContent>
+                <TabsContent value="products" className="mt-0 border p-4 rounded-lg">
+                  <ProductsStep />
+                </TabsContent>
+                <TabsContent value="cases" className="mt-0 border p-4 rounded-lg">
+                  <CasesStep />
+                </TabsContent>
+                <TabsContent value="needs" className="mt-0 border p-4 rounded-lg">
+                  <NeedsStep />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </FormProvider>
         </div>
       </div>
 
@@ -442,6 +320,87 @@ export function CompanyCrmView({ companyId, initialCompanyData }: { companyId: s
           </TabsContent>
 
           <TabsContent value="tierC" className="flex-1 overflow-y-auto p-5 m-0 space-y-6">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+               <div className="flex items-center gap-2 mb-2 border-b pb-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <h4 className="font-semibold text-slate-800">秘书处核核专区 (数据保真工具)</h4>
+               </div>
+               
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                     <Label className="text-xs font-medium">信用代码核验</Label>
+                     <Select value={aTierData.credit_code_status || "pending"} onValueChange={(val) => setATierData({...aTierData, credit_code_status: val})}>
+                        <SelectTrigger className="h-8 text-xs bg-white">
+                           <SelectValue placeholder="选择状态" />
+                        </SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="pending">待核验</SelectItem>
+                           <SelectItem value="verified">✅ 已核验 (真实)</SelectItem>
+                           <SelectItem value="invalid">❌ 查无此号/错误</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-xs font-medium">证明材料审查</Label>
+                     <Select value={aTierData.evidence_status || "pending"} onValueChange={(val) => setATierData({...aTierData, evidence_status: val})}>
+                        <SelectTrigger className="h-8 text-xs bg-white">
+                           <SelectValue placeholder="选择状态" />
+                        </SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="pending">待审查</SelectItem>
+                           <SelectItem value="verified">✅ 证明完整</SelectItem>
+                           <SelectItem value="insufficient">⚠️ 材料不足</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-xs font-medium">联络有效性</Label>
+                     <Select value={aTierData.contact_status || "pending"} onValueChange={(val) => setATierData({...aTierData, contact_status: val})}>
+                        <SelectTrigger className="h-8 text-xs bg-white">
+                           <SelectValue placeholder="选择状态" />
+                        </SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="pending">待拨打</SelectItem>
+                           <SelectItem value="verified">✅ 电话畅通</SelectItem>
+                           <SelectItem value="unreachable">❌ 关机/空号/拒绝</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+               </div>
+
+               <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-xs font-medium">档案完整度评分 ({aTierData.completion_rate || 0}%)</Label>
+                  </div>
+                  <Slider 
+                    value={[aTierData.completion_rate || 0]} 
+                    min={0} max={100} step={5} 
+                    onValueChange={val => setATierData({...aTierData, completion_rate: val[0]})}
+                  />
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                     <Label className="text-xs font-medium">秘书处推荐应用场景</Label>
+                     <Textarea 
+                        className="text-xs h-20 bg-white" 
+                        placeholder="根据尽调结果，推荐的下游匹配场景..."
+                        value={aTierData.recommended_scenarios || ""}
+                        onChange={(e) => setATierData({...aTierData, recommended_scenarios: e.target.value})}
+                     />
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-xs font-medium">内部核验备注 (不对外展示)</Label>
+                     <Textarea 
+                        className="text-xs h-20 bg-white" 
+                        placeholder="仅供秘书处内部决策参考的私密备注..."
+                        value={aTierData.secretariat_comments || ""}
+                        onChange={(e) => setATierData({...aTierData, secretariat_comments: e.target.value})}
+                     />
+                  </div>
+               </div>
+            </div>
+
             <div className="flex justify-between items-center bg-blue-50/50 p-4 rounded-lg border border-blue-100">
                <div>
                   <h4 className="font-medium text-blue-900">核心工序图谱 (仅内部可见)</h4>
@@ -449,7 +408,6 @@ export function CompanyCrmView({ companyId, initialCompanyData }: { companyId: s
                </div>
                <div className="flex gap-2">
                   <Badge variant="outline" className="bg-white border-blue-200 text-blue-700">意愿度: 高 (A类)</Badge>
-                  <Button size="sm" variant="outline">编辑</Button>
                </div>
             </div>
 

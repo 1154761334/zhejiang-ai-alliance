@@ -94,11 +94,17 @@ export default {
 
             // Fallback for known role names if mapping still USER
             if (appRole === "USER") {
-               if (roleName === "Administrator" || roleName === "Admin") appRole = "ADMIN";
-               if (roleName === "Secretariat" || roleName === "秘书处") appRole = "ADMIN";
+               const lowerRoleName = roleName.toLowerCase();
+               if (lowerRoleName.includes("admin") || lowerRoleName.includes("administrator") || lowerRoleName.includes("secretariat") || lowerRoleName.includes("秘书处")) {
+                  appRole = "ADMIN";
+               }
             }
 
             console.log(`[Auth] Final Assignment -> Email: ${user.email}, App Role: ${appRole}`);
+            
+            if (user.email === 'admin@example.com' && appRole !== 'ADMIN') {
+              console.error(`[Auth] CRITICAL: admin@example.com assigned ${appRole} instead of ADMIN!`);
+            }
 
             return {
               id: user.id,

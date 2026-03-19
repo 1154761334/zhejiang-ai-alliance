@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3001';
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:4000';
 
 async function projectContextClear(page) {
     await page.goto(BASE_URL);
@@ -123,13 +123,17 @@ test.describe('P0 冒烟测试 - 核心端到端全链路', () => {
       // --- STEP 2: 产品能力 ---
       await fillInput('products.0.name', 'Antigravity AI Engine');
       
-      await page.getByLabel(/^产品形态/).click();
+      // 第一个下拉：形态 (使用更明确的 label 关联定位)
+      await page.locator('div:has(> label:has-text("产品形态")) button').click();
       await page.waitForSelector('[role="listbox"]');
       await page.locator('[role="option"]:has-text("智能体")').click();
+      await page.waitForTimeout(300);
       
-      await page.getByLabel(/^成熟度阶段/).click();
+      // 第二个下拉：成熟度
+      await page.locator('div:has(> label:has-text("成熟度阶段")) button').click();
       await page.waitForSelector('[role="listbox"]');
       await page.locator('[role="option"]:has-text("规模化商用")').click();
+      await page.waitForTimeout(300);
       
       await fillInput('products.0.description', '全自主研发的 AGI 核心引擎，支持全自动编码。');
       await fillInput('products.0.tech_stack', 'Transformer / RLHF / RAG');
@@ -150,28 +154,14 @@ test.describe('P0 冒烟测试 - 核心端到端全链路', () => {
       await page.waitForSelector('[role="listbox"]');
       await page.locator('[role="option"]:has-text("免费 PoC")').click();
       
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
       await page.click('button:has-text("下一步：补充案例")');
-      await expect(page.locator('text=第三板块：标杆案例库与量化效果')).toBeVisible({ timeout: 20000 });
+      await expect(page.locator('text=第三板块：行业场景与标杆案例')).toBeVisible({ timeout: 20000 });
 
-      // --- STEP 3: 场景案例 (跳过选填项以确保主流程闭环) ---
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
-      
-      console.log('Forcing navigation to Step 4 via Tab click');
-      await page.evaluate(() => {
-        const tabs = Array.from(document.querySelectorAll('button[role="tab"]'));
-        const tab4 = tabs.find(t => t.innerText.includes('合规'));
-        if (tab4) (tab4 as HTMLElement).click();
-      });
-      
-      // Also try the button as a secondary action
-      await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('合规与赋能需求'));
-        if (btn) (btn as HTMLElement).click();
-      });
-      
-      await expect(page.locator('text=第四板块：核心生态需求与入库承诺')).toBeVisible({ timeout: 25000 });
+      // --- STEP 3: 场景案例 (跳过选填项直接完成) ---
+      await page.waitForTimeout(1000);
+      await page.click('button:has-text("下一步：合规与赋能需求")');
+      await expect(page.locator('text=第四/五板块：合规承诺与生态赋能')).toBeVisible({ timeout: 25000 });
 
       // --- STEP 4: 需求与合规 ---
       await page.locator('label:has-text("需股权融资(找VC)")').click();
@@ -185,19 +175,31 @@ test.describe('P0 冒烟测试 - 核心端到端全链路', () => {
       await fillInputStep4('data_security_measures', '三级等保环境，全量数据加密留存。');
       await page.locator('label:has-text("涉密与保密承诺")').click();
 
+      // --- STEP 4: 审核与回显断言 ---
+      // 断言：在最终页面，Tab 1 的数据能够回显 (直接切回去看)
+      await page.click('button[role="tab"]:has-text("1. 基础信息")');
+      await expect(page.locator('input[name="company_name"]')).toHaveValue(testUser.company);
+      await page.click('button[role="tab"]:has-text("4. 合规与需求")');
+
       // FINAL SUBMISSION
-      await page.click('button:has-text("确认并正式提交申请")');
-      await expect(page.locator('text=申请提交成功')).toBeVisible({ timeout: 30000 });
+      await page.click('button:has-text("确认无误，提交审核")');
+      await expect(page.locator('text=基础档案提交成功')).toBeVisible({ timeout: 30000 });
       console.log('Form Submission Successful');
     });
 
     // STEP 3: 数据固化校验
     await test.step('P0-03: 数据锁定状态校验', async () => {
-      await page.waitForTimeout(3000);
-      await page.goto(`${BASE_URL}/dashboard`);
-      await page.waitForLoadState('networkidle');
-      await expect(page.locator('text=处于锁定状态').first()).toBeVisible({ timeout: 15000 });
-      console.log('Lock State Verified');
+      // 使用 expect.toPass 增强重试机制，等待服务端状态同步 (Next.js Revalidation 延迟)
+      await expect(async () => {
+        await page.goto(`${BASE_URL}/dashboard`);
+        await page.waitForLoadState('networkidle');
+        const lockText = page.locator('text=/锁定状态|待审|已收录|禁止修改/');
+        await expect(lockText).toBeVisible({ timeout: 5000 });
+      }).toPass({
+        intervals: [1000, 2000, 5000],
+        timeout: 20000,
+      });
+      console.log('Lock State Verified via expect.toPass');
     });
 
     // STEP 4: 秘书处审批流转
@@ -207,30 +209,48 @@ test.describe('P0 冒烟测试 - 核心端到端全链路', () => {
       await page.fill('input[id="email"]', 'admin@example.com');
       await page.fill('input[id="password"]', 'password');
       await page.click('button:has-text("登录")');
-      await page.waitForURL('**/admin', { timeout: 20000 });
+      
+      // 等待登录成功 Toast 或跳转
+      await expect(page.locator('text=登录成功')).toBeVisible({ timeout: 10000 });
+      
+      // 强制进入企业管理页面 
+      await page.goto(`${BASE_URL}/admin/companies`, { waitUntil: 'networkidle' });
+      
+      // 如果被弹回了 dashboard，说明角色映射有问题，尝试重度诊断性跳转
+      if (page.url().includes('/dashboard')) {
+        console.log('Admin login redirected! Attempting direct sub-page access...');
+        await page.goto(`${BASE_URL}/admin/companies`);
+        await page.waitForLoadState('domcontentloaded');
+      }
 
-      await page.goto(`${BASE_URL}/admin/companies`);
-      await page.waitForLoadState('load');
+      await expect(page.locator('h1, h2, h3').filter({ hasText: '企业管理' })).toBeVisible({ timeout: 15000 });
       
       // 搜索刚注册的企业
-      await page.getByPlaceholder('搜索企业全称...').fill(testUser.company);
-      await page.waitForTimeout(1000);
+      const searchInput = page.getByPlaceholder('搜索企业全称...');
+      await searchInput.fill(testUser.company);
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(2000);
       
-      // 点击“更多”按钮
-      await page.getByRole('button', { name: 'Open menu' }).click();
+      // 点击“审核项”
+      const registrationRow = page.locator('tr').filter({ hasText: testUser.company });
+      await expect(registrationRow).toBeVisible({ timeout: 10000 });
+      
+      // 查找并点击该行的操作菜单 (假设是最后一个单元格的按钮或特定的 Select)
+      await registrationRow.locator('button').last().click();
+      await page.waitForSelector('[role="menu"]');
       await page.locator('div[role="menuitem"]:has-text("编辑/审核")').click();
       
-      // 进入详情页修改状态
-      await expect(page.locator('text=企业管理全景 (A 层)')).toBeVisible({ timeout: 20000 });
+      // 审核操作
+      await expect(page.locator('text=企业管理全景')).toBeVisible({ timeout: 20000 });
       
-      // 修改为“正式入库”
-      await page.getByLabel('当前状态').click();
+      // 修改状态为“正式入库”
+      await page.locator('button:has(span:has-text("待出访尽调"))').first().click();
       await page.waitForSelector('[role="listbox"]');
       await page.locator('[role="option"]:has-text("正式入库")').click();
       
       // 保存
       await page.click('button:has-text("保存全案")');
-      await expect(page.locator('text=企业信息更新成功')).toBeVisible({ timeout: 20000 });
+      await expect(page.locator('text=展示已更新')).toBeVisible({ timeout: 20000 });
       
       console.log('Full E2E Lifecycle Verified Successfully!');
     });

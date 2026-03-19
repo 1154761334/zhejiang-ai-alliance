@@ -3,41 +3,41 @@ import { getCurrentUser } from "@/lib/session";
 import { constructMetadata } from "@/lib/utils";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { CapabilityForm } from "@/components/dashboard/capability-form";
+import { redirect } from "next/navigation";
 
 export const metadata = constructMetadata({
   title: "控制台 – 浙江省AI智能体产业联盟",
   description: "Create and manage content.",
 });
 
+import { env } from "@/env.mjs";
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-
-  // Create an authenticated client to query the user's data
-  const client = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
-    .with(staticToken(process.env.DIRECTUS_STATIC_TOKEN || ""))
-    .with(rest());
+  if (!user) {
+    redirect("/login");
+  }
 
   let initialData: any = null;
 
-  if (user?.id) {
-    try {
-      // Fetch the company record created by this user
-      const res = await client.request(readItems('companies', {
-        filter: {
-          _or: [
-            { user_created: { _eq: user.id } },
-            { contact_email: { _eq: user.email } }
-          ]
-        },
-        fields: ['*', 'products.*', 'case_studies.*', 'survey_needs.*', 'compliance_risks.*'],
-        limit: 1
-      }));
-      if (res && res.length > 0) {
-        initialData = res[0];
-      }
-    } catch (err) {
-      console.error("Failed to fetch user company data:", err);
-    }
+  try {
+    const client = createDirectus(env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
+      .with(staticToken(env.DIRECTUS_STATIC_TOKEN || "static_ebdfd517a183459c82972b87d2d5ec3f"))
+      .with(rest());
+
+    const res = await client.request(readItems('companies', {
+      filter: {
+        _or: [
+          { user_created: { _eq: user.id } },
+          { contact_email: { _eq: user.email } }
+        ]
+      },
+      fields: ['*', 'products.*', 'case_studies.*', 'survey_needs.*', 'compliance_risks.*'],
+      limit: 1
+    })) as any[];
+    initialData = res?.[0] || null;
+  } catch (error) {
+    console.error("Failed to fetch dashboard data:", error);
   }
 
   const isPendingReview = initialData?.status === 'pending_review' || initialData?.status === 'published';

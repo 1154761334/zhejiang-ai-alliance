@@ -3,17 +3,21 @@ import { auth } from "@/auth";
 import { createDirectus, rest, staticToken, createItem, updateItem, deleteItems, readItems } from "@directus/sdk";
 import { revalidatePath } from "next/cache";
 import { surveyFormSchema } from "@/components/dashboard/survey-steps/schema";
+import { env } from "@/env.mjs";
 
-const adminClient = createDirectus<any>(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
-  .with(staticToken(process.env.DIRECTUS_STATIC_TOKEN || ""))
+const adminClient = createDirectus<any>(env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
+  .with(staticToken(env.DIRECTUS_STATIC_TOKEN || "static_ebdfd517a183459c82972b87d2d5ec3f"))
   .with(rest());
 
 export async function submitSurvey(rawValues: any, status: "draft" | "pending_review", initialId?: string) {
   try {
+    console.log(`[submitSurvey] Starting submission. Status: ${status}, InitialId: ${initialId}`);
     const session = await auth();
     if (!session?.user?.id) {
-      throw new Error("Unauthorized");
+      console.error("[submitSurvey] No session found");
+      return { success: false, error: "Not authenticated" };
     }
+    console.log(`[submitSurvey] Authenticated as UserID: ${session.user.id}`);
 
     const data = surveyFormSchema.parse(rawValues);
 
@@ -21,7 +25,7 @@ export async function submitSurvey(rawValues: any, status: "draft" | "pending_re
       status: status,
       company_name: data.company_name,
       credit_code: data.credit_code,
-      established_date: data.established_date || null,
+      established_date: data.established_date ? new Date(data.established_date).toISOString().split('T')[0] : null,
       region: data.region,
       address: data.address,
       website: data.website,
@@ -142,10 +146,14 @@ export async function submitSurvey(rawValues: any, status: "draft" | "pending_re
 
     revalidatePath("/dashboard");
     revalidatePath("/admin/companies");
-    return { success: true, companyId };
+    console.log(`[submitSurvey] Success! Company ID: ${companyId}`);
+    return { success: true, id: companyId };
 
   } catch (error: any) {
-    console.error("[submitSurvey] Error caught in server action:", error);
+    console.error("[submitSurvey] Fatal Error:", error);
+    if (error.errors) {
+       console.error("[submitSurvey] Directus errors:", JSON.stringify(error.errors, null, 2));
+    }
     return { 
       success: false, 
       error: error.message || "Failed to submit survey" 

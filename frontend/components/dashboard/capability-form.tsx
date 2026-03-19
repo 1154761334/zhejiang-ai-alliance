@@ -65,7 +65,17 @@ export function CapabilityForm({ initialData, isLocked = false }: CapabilityForm
     tech_complement_desc: initialData?.survey_needs?.[0]?.tech_complement_desc || "",
     data_security_measures: initialData?.compliance_risks?.[0]?.data_security_measures || "",
     has_mlps_certification: initialData?.compliance_risks?.[0]?.has_mlps_certification || false,
-    processes_pii: initialData?.compliance_risks?.[0]?.processes_pii || false
+    processes_pii: initialData?.compliance_risks?.[0]?.processes_pii || false,
+    company_description: initialData?.company_description || "",
+    awards_honors: initialData?.awards_honors || "",
+    info_provider_name_position: initialData?.info_provider_name_position || "",
+    confidentiality_commitment: initialData?.confidentiality_commitment || false,
+    delivery_risks: initialData?.delivery_risks || "",
+    risk_mitigation: initialData?.risk_mitigation || "",
+    industry_tags: initialData?.industry_tags || [],
+    capability_tags: initialData?.capability_tags || [],
+    tech_stack_tags: initialData?.tech_stack_tags || [],
+    maturity_level: initialData?.maturity_level || ""
   };
 
   const form = useForm<SurveyFormValues>({
@@ -109,8 +119,8 @@ export function CapabilityForm({ initialData, isLocked = false }: CapabilityForm
       // Use Server Action for submission to handle permissions and auth securely
       const result = await submitSurvey(data, status, initialData?.id);
       
-      if (result.status === "error") {
-        throw new Error(result.message);
+      if (!result.success) {
+        throw new Error(result.error || "提交失败，服务器未返回具体原因");
       }
 
       if (status === "draft") {

@@ -60,6 +60,7 @@ export const {
         token.role = (user as any).role;
         token.accessToken = (user as any).accessToken;
         token.companyId = (user as any).companyId;
+        token.email = user.email;
         token.sub = user.id;
       }
       return token;

@@ -12,27 +12,35 @@ description: How to start the development environment and run the project locall
 
 1. Start Directus backend (in the project root directory):
 ```powershell
+mkdir -p database uploads
 docker-compose up -d
 ```
 Verify Directus is running at http://localhost:8055
 
-2. Install frontend dependencies (only needed on first run or after changes):
+2. Install dependencies (frontend and scripts):
 ```powershell
 cd frontend
 npm install
+cd ../backend/scripts
+npm install
 ```
 
-3. Start the Next.js development server:
+3. Initialize Directus Backend (one-time setup):
 ```powershell
+cd backend/scripts
+node setup-directus.mjs
+node setup-crm-collections.mjs
+node setup-permissions.mjs
+node seed-test-data.mjs
+node enable-registration.mjs
+```
+
+4. Start the Next.js development server:
+```powershell
+cd frontend
 npm run dev
 ```
-Frontend should be available at http://localhost:3000
-
-4. (Optional) Seed test data:
-```powershell
-node seed-test-data.mjs
-```
-This will populate the Directus database with test articles, members, and an application.
+Frontend should be available at http://localhost:3000 (or 3001 if 3000 is busy).
 
 ## Key URLs
 - Frontend: http://localhost:3000

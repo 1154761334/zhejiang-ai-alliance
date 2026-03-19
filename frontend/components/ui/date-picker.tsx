@@ -28,6 +28,8 @@ export function DatePicker({ value, onChange, placeholder = "选择日期", clas
     return typeof value === 'string' ? new Date(value) : value
   }, [value])
 
+  const [open, setOpen] = React.useState(false)
+
   const handleSelect = (selectedDate: Date | undefined) => {
     if (onChange) {
       if (selectedDate) {
@@ -37,10 +39,11 @@ export function DatePicker({ value, onChange, placeholder = "选择日期", clas
         onChange(undefined)
       }
     }
+    setOpen(false) // Close popover after selection
   }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}

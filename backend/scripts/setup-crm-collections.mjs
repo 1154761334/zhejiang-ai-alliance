@@ -13,8 +13,23 @@ async function setupCRMCollections() {
         const collections = await directus.request(readCollections());
         const collectionNames = collections.map(c => c.collection);
 
-        // 1. Update existing 'companies' collection (A-Tier) with new fields
-        // Assuming 'companies' collection exists
+        // 1. Create 'companies' collection if it doesn't exist
+        if (!collectionNames.includes('companies')) {
+            console.log("Creating 'companies' collection...");
+            await directus.request(createCollection({
+                collection: 'companies',
+                meta: { collection: 'companies', icon: 'business', note: '入驻企业详情' },
+                schema: { name: 'companies' },
+                fields: [
+                    { field: 'id', type: 'uuid', meta: { hidden: true, readonly: true }, schema: { is_primary_key: true, has_auto_increment: false } }
+                ]
+            }));
+            // Refresh collection list
+            const updatedCollections = await directus.request(readCollections());
+            collectionNames.push(...updatedCollections.map(c => c.collection));
+        }
+
+        // Update 'companies' collection with new fields
         console.log("Updating 'companies' A-Tier collection fields...");
         try {
             const existingCompanyFields = await directus.request(readFields('companies'));

@@ -43,3 +43,15 @@ debug.log
 
 # IDE
 .trae/
+
+# Playwright & Testing
+playwright-report/
+test-results/
+*.png
+*.txt
+!README.md
+!docs/**/*.txt
+!backend/**/*.txt
+!frontend/**/*.txt
+!database/**/*.txt
+!tests/**/*.txt

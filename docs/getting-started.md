@@ -20,8 +20,25 @@ cd zhejiang-ai-alliance
 ```
 
 ### 2. 环境配置
-1. 在 `frontend/` 目录下，复制 `.env.example` 为 `.env`。
-2. 根据实际需求修改 `.env` 中的 API 地址和认证密钥（本地开发通常可保持默认）。
+1. **创建必要目录**（解决 SQLite 无法打开数据库的问题）：
+   ```bash
+   mkdir -p database uploads
+   chmod 777 database uploads
+   ```
+2. **配置环境变量**：
+   在 `frontend/` 目录下，复制 `.env.example` 为 `.env`。
+   ```bash
+   cp frontend/.env.example frontend/.env
+   ```
+3. **完善 `.env` 变量**：
+   确保以下关键变量已设置（本地开发可使用占位符）：
+   - `NEXT_PUBLIC_APP_URL=http://localhost:3000` (或 3001，视端口占用情况而定)
+   - `NEXT_PUBLIC_API_URL=http://localhost:8055`
+   - `DATABASE_URL` (Next.js 校验需要，虽然主要使用 Directus)
+   - `AUTH_SECRET`, `GOOGLE_CLIENT_ID` 等认证信息。
+
+> [!TIP]
+> 如果 3000 端口被占用，Next.js 会自动尝试 3001 端口。请确保 `.env` 中的 `NEXT_PUBLIC_APP_URL` 与实际运行端口一致。
 
 ### 3. 启动全栈服务
 
@@ -50,13 +67,17 @@ cd zhejiang-ai-alliance
 
 ---
 
-### 4. 初始化数据结构
-第一次启动或数据库清空后，需要执行以下初始化脚本：
+### 4. 初始化后端数据结构
+第一次启动或数据库清空后，需要**顺序执行**以下脚本：
 ```bash
 cd backend/scripts
-node setup-survey-schema.mjs
-node enable-registration.mjs
-node seed-articles.mjs
+npm install # 安装脚本依赖
+
+node setup-directus.mjs        # 初始化基础集合
+node setup-crm-collections.mjs # 初始化企业/CRM 模型
+node setup-permissions.mjs     # 配置 Directus 11 访问策略
+node seed-test-data.mjs        # 导入演示测试数据
+node enable-registration.mjs   # 开启公开注册
 ```
 
 ### 5. 访问地址

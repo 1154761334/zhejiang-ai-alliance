@@ -6,6 +6,6 @@
 
     # Proxy everything else to Frontend (host machine)
     handle {
-        reverse_proxy host.docker.internal:3000
+        reverse_proxy host.docker.internal:4000
     }
 }

@@ -12,6 +12,8 @@ const adminClient = createDirectus<any>(env.NEXT_PUBLIC_API_URL || "http://local
 export async function submitSurvey(rawValues: any, status: "draft" | "pending_review", initialId?: string) {
   try {
     console.log(`[submitSurvey] Starting submission. Status: ${status}, InitialId: ${initialId}`);
+    console.log(`[submitSurvey] Raw Products Length: ${rawValues?.products?.length || 0}`);
+    console.log(`[submitSurvey] Raw Cases Length: ${rawValues?.case_studies?.length || 0}`);
     const session = await auth();
     if (!session?.user?.id) {
       console.error("[submitSurvey] No session found");
@@ -95,18 +97,12 @@ export async function submitSurvey(rawValues: any, status: "draft" | "pending_re
           await adminClient.request(createItem("products", { 
             id: crypto.randomUUID(),
             company_id: companyId,
-            name: p.name,
-            type: p.form_factor, // Naming map
-            maturity: p.maturity_stage, // Naming map
-            function_desc: p.description, // Naming map
-            tech_stack: p.tech_stack,
-            model_preference: p.model_preference,
-            agent_capabilities: p.agent_capabilities,
-            data_capabilities: p.data_capabilities,
-            delivery_cycle_months: p.delivery_cycle_months,
-            prerequisites: p.prerequisites,
-            pricing_model: p.pricing_model,
-            pilot_mode: p.pilot_mode
+            product_name: p.name || "",
+            product_type: p.form_factor || "",
+            product_description: p.description || "",
+            advantage: p.advantages || "",
+            category: p.category || "",
+            tech_stack: p.tech_stack || [],
           }));
         }
       }
@@ -115,9 +111,18 @@ export async function submitSurvey(rawValues: any, status: "draft" | "pending_re
       if (data.case_studies && data.case_studies.length > 0) {
         for (const c of data.case_studies) {
           await adminClient.request(createItem("case_studies", { 
-            ...c, 
             id: crypto.randomUUID(),
-            company_id: companyId 
+            company_id: companyId,
+            case_title: c.title || "",
+            location: c.location || "",
+            implementation_date: c.implementation_date || null,
+            pain_points: c.pain_points || "",
+            solution: c.solution || "",
+            data_types: c.data_types || [],
+            is_live: !!c.is_live,
+            evidence_type: c.evidence_type || "none",
+            quantified_results: c.quantified_results || "",
+            reusability: c.reusability || ""
           }));
         }
       }
@@ -126,21 +131,21 @@ export async function submitSurvey(rawValues: any, status: "draft" | "pending_re
       await adminClient.request(createItem("survey_needs", {
         id: crypto.randomUUID(),
         company_id: companyId,
-        financing_need: data.financing_need,
-        market_needs: data.market_need,
-        tech_needs: data.tech_need,
-        compute_pain_points: data.compute_pain_points,
-        tech_complement_desc: data.tech_complement_desc,
-        policy_intent: data.policy_intent
+        financing_need: data.financing_need || [],
+        market_needs: data.market_need || [],
+        tech_needs: data.tech_need || [],
+        compute_pain_points: data.compute_pain_points || [],
+        tech_complement_desc: data.tech_complement_desc || "",
+        policy_intent: data.policy_intent || []
       }));
 
       // Save Compliance
       await adminClient.request(createItem("compliance_risks", {
         id: crypto.randomUUID(),
         company_id: companyId,
-        data_security_measures: data.data_security_measures,
-        has_mlps_certification: data.has_mlps_certification,
-        processes_pii: data.processes_pii
+        data_security_measures: data.data_security_measures || "",
+        has_mlps_certification: !!data.has_mlps_certification,
+        processes_pii: !!data.processes_pii
       }));
     }
 

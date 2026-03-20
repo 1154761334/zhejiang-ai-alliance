@@ -243,12 +243,45 @@ test.describe('P0 冒烟测试 - 核心端到端全链路', () => {
       // 审核操作
       await expect(page.locator('text=企业管理全景')).toBeVisible({ timeout: 20000 });
       
+      // --- 详细秘书处审核流转 (尽调记录) ---
+      // 切换到内部核查页签
+      await page.getByRole('tab', { name: '内部核查记录' }).click();
+      
+      // 新增一条尽调记录
+      await page.getByRole('button', { name: '新增尽调核查记录' }).click();
+      
+      // 填写秘书处专家意见
+      await page.getByPlaceholder(/实地占地/).fill('实地考察情况：具备中试生产线，技术实力雄厚，符合 A 类入库标准。');
+      await page.getByPlaceholder(/核心算法多/).fill('研发团队约 30 人，核心人员来自知名院校，具备自研能力。');
+      await page.getByPlaceholder(/宣称的吉利/).fill('已核实其与阿里的真实合作合同，客户关系真实可靠。');
+      
+      // 填写核实的人员规模
+      await page.locator('input[type="number"]').fill('35');
+      
+      // 风险评估 (Select)
+      await page.locator('button:has-text("风险评估"), button:has-text("低风险")').click();
+      await page.getByRole('option', { name: '低风险 (健康)' }).click();
+      
+      // 合作意愿 (Select)
+      await page.locator('button:has-text("选择意愿度"), button:has-text("B类")').click();
+      await page.getByRole('option', { name: 'A类 (强烈参与, 资源置换意愿高)' }).click();
+      
+      // 点击保存记录
+      await page.getByRole('button', { name: '保存记录并上墙' }).click();
+      
+      // 验证记录已上墙
+      await expect(page.locator('text=实地考察情况')).toBeVisible({ timeout: 10000 });
+      
+      // --- 最终正式入库审核 ---
+      // 切换回 A层基本档案以修改状态
+      await page.getByRole('tab', { name: 'A层-基本档案' }).click();
+
       // 修改状态为“正式入库”
       await page.locator('button:has(span:has-text("待出访尽调"))').first().click();
       await page.waitForSelector('[role="listbox"]');
       await page.locator('[role="option"]:has-text("正式入库")').click();
       
-      // 保存
+      // 保存全案
       await page.click('button:has-text("保存全案")');
       await expect(page.locator('text=展示已更新')).toBeVisible({ timeout: 20000 });
       

@@ -5,6 +5,7 @@
 ## 1. 核心里程碑 (Completed Milestones)
 
 - [x] **基础设施**: Docker + Directus + Next.js 环境完全就绪。
+- [x] **端口映射优化**: 确立前端生产端口为 4000，解决与 3000 端口服务的冲突，并同步更新了 `Caddyfile` 与全量文档。
 - [x] **分步填报系统**: 
     - 实现全套 Directus Schema (Companies, Products, Cases, Needs, Risks)。
     - 完成 **“四步向导式”表单**。

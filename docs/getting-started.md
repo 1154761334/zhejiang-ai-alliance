@@ -32,13 +32,13 @@ cd zhejiang-ai-alliance
    ```
 3. **完善 `.env` 变量**：
    确保以下关键变量已设置（本地开发可使用占位符）：
-   - `NEXT_PUBLIC_APP_URL=http://localhost:3000` (或 3001，视端口占用情况而定)
+   - `NEXT_PUBLIC_APP_URL=http://localhost:4000` (如果 3000 被占用，请使用 4000)
    - `NEXT_PUBLIC_API_URL=http://localhost:8055`
    - `DATABASE_URL` (Next.js 校验需要，虽然主要使用 Directus)
    - `AUTH_SECRET`, `GOOGLE_CLIENT_ID` 等认证信息。
 
 > [!TIP]
-> 如果 3000 端口被占用，Next.js 会自动尝试 3001 端口。请确保 `.env` 中的 `NEXT_PUBLIC_APP_URL` 与实际运行端口一致。
+> 如果 3000 端口被占用（例如被 "New API" 占用），Next.js 会自动尝试 3001 或更高端口。目前生产配置已固定为 4000。请确保 `.env` 中的 `NEXT_PUBLIC_APP_URL` 与实际运行端口一致。
 
 ### 3. 启动全栈服务
 
@@ -81,9 +81,9 @@ node enable-registration.mjs   # 开启公开注册
 ```
 
 ### 5. 访问地址
-- **前端门户**: [http://localhost:3000](http://localhost:3000)
+- **前端门户**: [http://localhost:4000](http://localhost:4000)
 - **Directus 管理后台**: [http://localhost:8055](http://localhost:8055)
-- **管理端企业档案审批**: [http://localhost:3000/admin](http://localhost:3000/admin)
+- **管理端企业档案审批**: [http://localhost:4000/admin](http://localhost:4000/admin)
 
 ---
 

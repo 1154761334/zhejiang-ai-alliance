@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { createDirectus, rest, updateItem, readItems } from "@directus/sdk";
 import { toast } from "sonner";
+import { updateMatchmakingNeed } from "@/actions/matchmaking-actions";
 import {
     Table,
     TableBody,
@@ -12,6 +12,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -20,82 +21,147 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Icons } from "@/components/shared/icons";
+import { flattenNeedLabels, getTicketStatusInfo } from "@/lib/member-ops";
 
 interface NeedsItem {
     id: string;
     company_id: {
         id: string;
         company_name: string;
+        region?: string;
+        role?: string;
     };
     financing_need: string[];
+    market_need?: string[];
+    market_needs?: string[];
     compute_pain_points: string[];
     tech_need: string[];
+    tech_needs?: string[];
+    policy_intent?: string[];
+    tech_complement_desc?: string;
     ticket_status: string;
     assignee: string | null;
     tags: string[] | null;
+    date_created?: string;
 }
 
-export function MatchmakingBoard() {
-    const [data, setData] = React.useState<NeedsItem[]>([]);
-    const [loading, setLoading] = React.useState(true);
-
-    const fetchNeeds = async () => {
-        try {
-            setLoading(true);
-            const client = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055").with(rest());
-
-            const response = await client.request(readItems('survey_needs', {
-                fields: ['id', 'company_id.id', 'company_id.company_name', 'financing_need', 'compute_pain_points', 'tech_need', 'ticket_status', 'assignee', 'tags'],
-            }));
-
-            setData(response as unknown as NeedsItem[]);
-        } catch (error) {
-            console.error("Failed to fetch matchmaking needs", error);
-            toast.error("获取数据失败");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    React.useEffect(() => {
-        fetchNeeds();
-    }, []);
+export function MatchmakingBoard({ initialItems }: { initialItems: NeedsItem[] }) {
+    const [data, setData] = React.useState<NeedsItem[]>(initialItems || []);
+    const [statusFilter, setStatusFilter] = React.useState("all");
+    const [typeFilter, setTypeFilter] = React.useState("all");
 
     const updateStatus = async (id: string, newStatus: string) => {
-        try {
-            const client = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055").with(rest());
-            await client.request(updateItem('survey_needs', id, { ticket_status: newStatus }));
+        const previous = data;
+        setData((items) =>
+            items.map((item) =>
+                item.id === id ? { ...item, ticket_status: newStatus } : item,
+            ),
+        );
+        const result = await updateMatchmakingNeed(id, { ticket_status: newStatus });
+        if (result.status === "success") {
             toast.success("状态已更新");
-            fetchNeeds();
-        } catch (error) {
-            console.error("Failed to update status", error);
-            toast.error("更新失败");
+        } else {
+            setData(previous);
+            toast.error(result.message || "更新失败");
         }
     };
 
     const updateAssignee = async (id: string, newAssignee: string) => {
-        try {
-            const client = createDirectus(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055").with(rest());
-            await client.request(updateItem('survey_needs', id, { assignee: newAssignee }));
+        const previous = data;
+        setData((items) =>
+            items.map((item) =>
+                item.id === id ? { ...item, assignee: newAssignee } : item,
+            ),
+        );
+        const result = await updateMatchmakingNeed(id, { assignee: newAssignee });
+        if (result.status === "success") {
             toast.success("跟进人已更新");
-            fetchNeeds();
-        } catch (error) {
-            console.error("Failed to update assignee", error);
-            toast.error("更新失败");
+        } else {
+            setData(previous);
+            toast.error(result.message || "更新失败");
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center p-8">
-                <Icons.spinner className="animate-spin h-8 w-8 text-slate-400" />
-            </div>
-        );
-    }
+    const filteredData = React.useMemo(() => {
+        return data.filter((item) => {
+            if (statusFilter !== "all" && (item.ticket_status || "pending") !== statusFilter) {
+                return false;
+            }
+
+            if (typeFilter === "all") return true;
+            return flattenNeedLabels(item).some((group) => group.label === typeFilter);
+        });
+    }, [data, statusFilter, typeFilter]);
+
+    const stats = React.useMemo(() => {
+        return {
+            total: data.length,
+            pending: data.filter((item) => ["pending", "open", undefined, null].includes(item.ticket_status)).length,
+            inProgress: data.filter((item) => item.ticket_status === "in_progress").length,
+            resolved: data.filter((item) => item.ticket_status === "resolved").length,
+        };
+    }, [data]);
 
     return (
-        <div className="rounded-md border bg-white mt-4">
+        <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border bg-white p-4">
+                    <p className="text-xs text-muted-foreground">需求总数</p>
+                    <p className="mt-1 text-2xl font-bold">{stats.total}</p>
+                </div>
+                <div className="rounded-lg border bg-white p-4">
+                    <p className="text-xs text-muted-foreground">待处理</p>
+                    <p className="mt-1 text-2xl font-bold text-amber-600">{stats.pending}</p>
+                </div>
+                <div className="rounded-lg border bg-white p-4">
+                    <p className="text-xs text-muted-foreground">跟进中</p>
+                    <p className="mt-1 text-2xl font-bold text-blue-600">{stats.inProgress}</p>
+                </div>
+                <div className="rounded-lg border bg-white p-4">
+                    <p className="text-xs text-muted-foreground">已解决</p>
+                    <p className="mt-1 text-2xl font-bold text-green-600">{stats.resolved}</p>
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-lg border bg-white p-3 lg:flex-row lg:items-center">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full lg:w-[160px]">
+                        <SelectValue placeholder="处理状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">全部状态</SelectItem>
+                        <SelectItem value="pending">待处理</SelectItem>
+                        <SelectItem value="in_progress">跟进中</SelectItem>
+                        <SelectItem value="resolved">已解决</SelectItem>
+                        <SelectItem value="closed">已关闭</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-full lg:w-[160px]">
+                        <SelectValue placeholder="需求类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">全部类型</SelectItem>
+                        <SelectItem value="融资">融资</SelectItem>
+                        <SelectItem value="算力">算力</SelectItem>
+                        <SelectItem value="市场">市场</SelectItem>
+                        <SelectItem value="技术">技术</SelectItem>
+                        <SelectItem value="政策">政策</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => {
+                        setStatusFilter("all");
+                        setTypeFilter("all");
+                    }}
+                >
+                    重置筛选
+                </Button>
+            </div>
+
+        <div className="mt-4 overflow-x-auto rounded-md border bg-white">
             <Table className="min-w-[900px]">
                 <TableHeader>
                     <TableRow>
@@ -107,35 +173,49 @@ export function MatchmakingBoard() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {data.length === 0 ? (
+                    {filteredData.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
                                 暂无需求记录
                             </TableCell>
                         </TableRow>
                     ) : (
-                        data.map((item) => (
+                        filteredData.map((item) => {
+                            const statusInfo = getTicketStatusInfo(item.ticket_status);
+                            const needGroups = flattenNeedLabels(item);
+
+                            return (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">
-                                    {item.company_id?.company_name || '未知企业'}
+                                    <div className="flex flex-col">
+                                        <span>{item.company_id?.company_name || '未知企业'}</span>
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            {[item.company_id?.region, item.company_id?.role].filter(Boolean).join(" · ") || "未标注区域/角色"}
+                                        </span>
+                                    </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex flex-col gap-1 max-w-[300px]">
-                                        {item.financing_need && item.financing_need.length > 0 && (
-                                            <div className="text-sm"><span className="font-semibold text-slate-500">融资:</span> {Array.isArray(item.financing_need) ? item.financing_need.join(', ') : item.financing_need}</div>
+                                    <div className="flex max-w-[300px] flex-col gap-1">
+                                        {needGroups.map((group) => (
+                                            <div className="text-sm" key={group.label}>
+                                                <span className="font-semibold text-slate-500">{group.label}:</span>{" "}
+                                                {group.values.join(", ")}
+                                            </div>
+                                        ))}
+                                        {item.tech_complement_desc && (
+                                            <div className="text-xs text-muted-foreground">
+                                                补充说明: {item.tech_complement_desc}
+                                            </div>
                                         )}
-                                        {item.compute_pain_points && item.compute_pain_points.length > 0 && (
-                                            <div className="text-sm"><span className="font-semibold text-slate-500">算力:</span> {Array.isArray(item.compute_pain_points) ? item.compute_pain_points.join(', ') : item.compute_pain_points}</div>
-                                        )}
-                                        {item.tech_need && item.tech_need.length > 0 && (
-                                            <div className="text-sm"><span className="font-semibold text-slate-500">技术:</span> {Array.isArray(item.tech_need) ? item.tech_need.join(', ') : item.tech_need}</div>
-                                        )}
-                                        {(!item.financing_need?.length && !item.compute_pain_points?.length && !item.tech_need?.length) && (
-                                            <span className="text-slate-400 italic">无明确痛点</span>
+                                        {needGroups.length === 0 && !item.tech_complement_desc && (
+                                            <span className="italic text-slate-400">无明确痛点</span>
                                         )}
                                     </div>
                                 </TableCell>
                                 <TableCell>
+                                    <div className="mb-2">
+                                        <Badge className={statusInfo.badgeClass}>{statusInfo.label}</Badge>
+                                    </div>
                                     <Select
                                         defaultValue={item.ticket_status || 'pending'}
                                         onValueChange={(val) => updateStatus(item.id, val)}
@@ -147,6 +227,7 @@ export function MatchmakingBoard() {
                                             <SelectItem value="pending">待处理</SelectItem>
                                             <SelectItem value="in_progress">跟进中</SelectItem>
                                             <SelectItem value="resolved">已解决</SelectItem>
+                                            <SelectItem value="closed">已关闭</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </TableCell>
@@ -154,7 +235,7 @@ export function MatchmakingBoard() {
                                     <Input
                                         defaultValue={item.assignee || ''}
                                         placeholder="输入姓名回车"
-                                        className="w-[120px] h-9"
+                                        className="h-9 w-[120px]"
                                         onBlur={(e) => {
                                             if (e.target.value !== item.assignee) {
                                                 updateAssignee(item.id, e.target.value);
@@ -179,10 +260,11 @@ export function MatchmakingBoard() {
                                     </div>
                                 </TableCell>
                             </TableRow>
-                        ))
+                        )})
                     )}
                 </TableBody>
             </Table>
+        </div>
         </div>
     );
 }

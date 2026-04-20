@@ -91,7 +91,7 @@ export default async function AdminPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">待预审档案</CardTitle>
-              <Clock className="h-4 w-4 text-orange-500" />
+              <Clock className="size-4 text-orange-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.pending}</div>
@@ -102,7 +102,7 @@ export default async function AdminPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">正式入库企业</CardTitle>
-              <Users className="h-4 w-4 text-green-500" />
+              <Users className="size-4 text-green-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.published}</div>
@@ -113,7 +113,7 @@ export default async function AdminPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">活跃需求单</CardTitle>
-              <FileText className="h-4 w-4 text-blue-500" />
+              <FileText className="size-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.needs}</div>
@@ -124,7 +124,7 @@ export default async function AdminPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">联盟总规模</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-purple-500" />
+              <CheckCircle2 className="size-4 text-purple-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{metrics.total}</div>
@@ -160,8 +160,8 @@ export default async function AdminPage() {
                         ) : (
                           <Badge variant="outline">{company.status}</Badge>
                         )}
-                        <Link href={`/admin/companies/${company.id}`} className="text-xs text-blue-600 hover:underline flex items-center">
-                          去处理 <ArrowRight className="ml-1 h-3 w-3" />
+                        <Link href={`/admin/companies/${company.id}`} className="flex items-center text-xs text-blue-600 hover:underline">
+                          去处理 <ArrowRight className="ml-1 size-3" />
                         </Link>
                       </div>
                     </div>
@@ -181,17 +181,22 @@ export default async function AdminPage() {
             <CardContent className="grid gap-4">
               <Link href="/admin/companies">
                 <Button variant="outline" className="w-full justify-start">
-                  <FileText className="mr-2 h-4 w-4" /> 进入企业材料审批台
+                  <FileText className="mr-2 size-4" /> 进入企业材料审批台
+                </Button>
+              </Link>
+              <Link href="/admin/tasks">
+                <Button variant="outline" className="w-full justify-start">
+                  <Clock className="mr-2 size-4" /> 查看秘书处待办中心
                 </Button>
               </Link>
               <Link href="/dashboard/charts">
                 <Button variant="outline" className="w-full justify-start">
-                  <Users className="mr-2 h-4 w-4" /> 查看全联盟数据概览
+                  <Users className="mr-2 size-4" /> 查看全联盟数据概览
                 </Button>
               </Link>
               <Link href="/admin/matchmaking">
-                <Button variant="outline" className="w-full justify-start text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100">
-                  <FileText className="mr-2 h-4 w-4" /> 供需撮合工作台
+                <Button variant="outline" className="w-full justify-start border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100">
+                  <FileText className="mr-2 size-4" /> 供需撮合工作台
                 </Button>
               </Link>
             </CardContent>

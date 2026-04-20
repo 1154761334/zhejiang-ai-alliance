@@ -1,4 +1,4 @@
-import { maskSensitiveData } from '../../frontend/actions/export-actions';
+import { maskSensitiveData } from '../../frontend/lib/data-masking';
 
 describe('Data Masking', () => {
   describe('maskSensitiveData', () => {

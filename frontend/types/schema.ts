@@ -11,7 +11,8 @@ export interface Company {
     tech_needs: string[];
     tech_complement_desc?: string;
     surveyor: string;
-    status: 'published' | 'draft' | 'archived';
+    status: 'published' | 'pending_review' | 'rejected' | 'draft' | 'archived';
+    maturity_level?: 'A' | 'B' | 'C';
 }
 
 export interface Product {

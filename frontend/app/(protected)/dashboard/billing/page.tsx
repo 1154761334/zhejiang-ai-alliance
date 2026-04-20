@@ -16,6 +16,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createDirectus, rest, staticToken, readItems } from "@directus/sdk";
 import { Badge } from "@/components/ui/badge";
+import { getMaturityLabel, getStatusInfo } from "@/lib/member-ops";
 
 export const metadata = constructMetadata({
   title: "我的会员状态 – 浙江省AI智能体产业联盟",
@@ -38,8 +39,13 @@ export default async function BillingPage() {
   try {
     const companies = await client.request(
       readItems("companies", {
-        filter: { user_created: { _eq: user.id } },
-        fields: ["id", "company_name", "status", "mature_level", "role"],
+        filter: {
+          _or: [
+            { user_created: { _eq: user.id } },
+            { contact_email: { _eq: user.email } },
+          ],
+        },
+        fields: ["id", "company_name", "status", "maturity_level", "role"],
         limit: 1,
       })
     );
@@ -48,22 +54,7 @@ export default async function BillingPage() {
     console.error("Billing: Failed to fetch company data:", err);
   }
 
-  const statusMap: Record<string, { label: string; color: string }> = {
-    draft: { label: "草稿（未提交）", color: "bg-gray-100 text-gray-800" },
-    pending_review: { label: "审核中", color: "bg-yellow-100 text-yellow-800" },
-    published: { label: "已入库", color: "bg-green-100 text-green-800" },
-    rejected: { label: "已驳回", color: "bg-red-100 text-red-800" },
-  };
-
-  const levelMap: Record<string, string> = {
-    A: "A级 · 标杆企业",
-    B: "B级 · 成长企业",
-    C: "C级 · 孵化企业",
-  };
-
-  const statusInfo = company
-    ? statusMap[company.status] || { label: company.status, color: "bg-gray-100" }
-    : null;
+  const statusInfo = company ? getStatusInfo(company.status) : null;
 
   return (
     <>
@@ -86,15 +77,15 @@ export default async function BillingPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-muted-foreground">审核状态：</span>
-                  <Badge className={cn("text-xs", statusInfo?.color)}>
+                  <Badge className={cn("text-xs", statusInfo?.badgeClass)}>
                     {statusInfo?.label}
                   </Badge>
                 </div>
-                {company.mature_level && (
+                {company.maturity_level && (
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-medium text-muted-foreground">成熟度评级：</span>
                     <span className="text-sm font-semibold">
-                      {levelMap[company.mature_level] || company.mature_level}
+                      {getMaturityLabel(company.maturity_level)}
                     </span>
                   </div>
                 )}

@@ -4,7 +4,8 @@ import { constructMetadata } from "@/lib/utils";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { UserTable } from "@/components/admin/user-table";
 import { InviteUserModal } from "@/components/admin/invite-user-modal";
-import { getUsers } from "@/actions/user-actions";
+import { UserStatsCards } from "@/components/admin/user-stats-cards";
+import { getUsers, getRoles, getCompanyList } from "@/actions/user-actions";
 
 export const metadata = constructMetadata({
   title: "账号管理 – 浙江省AI智能体产业联盟",
@@ -13,11 +14,17 @@ export const metadata = constructMetadata({
 
 export default async function UsersPage() {
   const user = await getCurrentUser();
-  console.log(`[UsersPage] Current User: ${user?.email}, Role: ${user?.role}`);
   if (!user || user.role !== "ADMIN") redirect("/login");
 
-  const res = await getUsers();
-  const users = res.status === "success" && res.data ? (res.data as any[]) : [];
+  const [usersRes, rolesRes, companiesRes] = await Promise.all([
+    getUsers(),
+    getRoles(),
+    getCompanyList(),
+  ]);
+
+  const users = usersRes.status === "success" && usersRes.data ? (usersRes.data as any[]) : [];
+  const roles = rolesRes.status === "success" && rolesRes.data ? (rolesRes.data as any[]) : [];
+  const companies = companiesRes.status === "success" && companiesRes.data ? (companiesRes.data as any[]) : [];
 
   return (
     <>
@@ -29,7 +36,8 @@ export default async function UsersPage() {
       </DashboardHeader>
 
       <div className="space-y-4">
-          <UserTable data={users} />
+        <UserStatsCards users={users} />
+        <UserTable data={users} roles={roles} companies={companies} />
       </div>
     </>
   );

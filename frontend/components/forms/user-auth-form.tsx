@@ -66,17 +66,16 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
     const signInResult = await signIn("credentials", {
       email: data.email.toLowerCase(),
       password: data.password,
-      redirect: true,
-      callbackUrl: searchParams?.get("from") || (data.email.includes("admin") ? "/admin" : "/dashboard"),
+      redirect: false, // 禁用自动跳转，手动处理更可控
     });
 
     setIsLoading(false);
 
     if (!signInResult?.ok || signInResult?.error) {
       return toast.error(type === "register" ? "注册成功但登录失败" : "登录失败", {
-        description: signInResult?.error === "CredentialsSignin" 
-          ? "邮箱或密码错误，请重试。" 
-          : "服务器响应异常，请稍后刷新重试。",
+        description: signInResult?.error === "CredentialsSignin"
+          ? "邮箱或密码错误，请重试。"
+          : `服务器响应异常：${signInResult?.error || "未知错误"}，请稍后刷新重试。`,
       });
     }
 
@@ -84,11 +83,9 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
       description: "正在为您跳转至管理后台...",
     });
 
-    // small delay to ensure cookie is set
-    setTimeout(() => {
-      const callbackUrl = searchParams?.get("from") || (data.email.includes("admin") ? "/admin" : "/dashboard");
-      window.location.href = callbackUrl;
-    }, 500);
+    // 跳转逻辑，确保cookie设置完成
+    const callbackUrl = searchParams?.get("from") || (data.email.includes("admin") ? "/admin" : "/dashboard");
+    window.location.href = callbackUrl;
   }
 
   return (

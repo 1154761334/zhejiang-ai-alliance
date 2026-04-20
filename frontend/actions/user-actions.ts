@@ -10,7 +10,10 @@ import { revalidatePath } from "next/cache";
  */
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055";
-  const token = process.env.DIRECTUS_STATIC_TOKEN || "static_ebdfd517a183459c82972b87d2d5ec3f";
+  const token = process.env.DIRECTUS_STATIC_TOKEN;
+  if (!token) {
+    throw new Error("DIRECTUS_STATIC_TOKEN is required for admin actions");
+  }
   return createDirectus<any>(url)
     .with(staticToken(token))
     .with(rest());
@@ -19,22 +22,19 @@ function getAdminClient() {
 export async function getUsers() {
   try {
     const session = await auth();
-    console.log(`[getUsers] Session user: ${session?.user?.email}, role: ${session?.user?.role}`);
-    
+
     if (!session || session.user.role !== "ADMIN") {
       throw new Error("Unauthorized");
     }
 
     const client = getAdminClient();
-    
+
     // Simple fetch all fields with star, cast to any for flexibility
     const users = await client.request(readUsers({
-      fields: ["*", "role.id", "role.name"] as any,
+      fields: ["*", "role.id", "role.name", "affiliated_company_id.id", "affiliated_company_id.company_name"] as any,
       limit: -1
     }));
 
-    console.log(`[getUsers] Success. Found ${users.length} users.`);
-    
     return { status: "success", data: users };
   } catch (error: any) {
     console.error("[getUsers] Critical Error:", error.message);
@@ -42,9 +42,61 @@ export async function getUsers() {
   }
 }
 
+/**
+ * 批量更新用户角色
+ */
+export async function batchUpdateUserRole(userIds: string[], roleId: string | null) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== "ADMIN") {
+      throw new Error("Unauthorized");
+    }
+
+    const client = getAdminClient();
+
+    // 并行更新所有用户
+    const promises = userIds.map(id =>
+      client.request(updateUser(id, { role: roleId }))
+    );
+
+    await Promise.all(promises);
+    revalidatePath("/admin/users");
+
+    return { status: "success", count: userIds.length };
+  } catch (error: any) {
+    console.error("批量更新角色失败:", error);
+    return { status: "error", message: error.message || "批量更新失败" };
+  }
+}
+
+/**
+ * 批量更新用户状态
+ */
+export async function batchUpdateUserStatus(userIds: string[], status: string) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== "ADMIN") {
+      throw new Error("Unauthorized");
+    }
+
+    const client = getAdminClient();
+
+    // 并行更新所有用户
+    const promises = userIds.map(id =>
+      client.request(updateUser(id, { status }))
+    );
+
+    await Promise.all(promises);
+    revalidatePath("/admin/users");
+
+    return { status: "success", count: userIds.length };
+  } catch (error: any) {
+    console.error("批量更新状态失败:", error);
+    return { status: "error", message: error.message || "批量更新失败" };
+  }
+}
+
 export async function updateUserAdmin(userId: string, data: any) {
-  console.log(`[AdminAction] Invoking updateUserAdmin for ${userId}`);
-  
   try {
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
@@ -60,13 +112,13 @@ export async function updateUserAdmin(userId: string, data: any) {
     };
 
     const result = await client.request(updateUser(userId, updatePayload));
-    
+
     revalidatePath("/admin/users");
     return { status: "success" };
   } catch (error: any) {
     console.error("Directus Error detail:", error.errors || error);
-    return { 
-      status: "error", 
+    return {
+      status: "error",
       message: error.message || "更新失败",
       details: error.errors
     };
@@ -82,7 +134,7 @@ export async function updateUserAccount(userId: string, data: any) {
 
     const client = getAdminClient();
     await client.request(updateUser(userId, data));
-    
+
     revalidatePath("/admin/users");
     return { status: "success" };
   } catch (error: any) {

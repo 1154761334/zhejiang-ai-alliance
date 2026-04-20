@@ -1,36 +1,58 @@
 "use server";
 
-import { auth } from "@/auth";
-import { createDirectus, rest, staticToken, updateItem, createItem, deleteItems, readItems } from "@directus/sdk";
 import { revalidatePath } from "next/cache";
-import { companyTierASchema, internalInvestigationSchema } from "@/lib/validations/crm";
+import { auth } from "@/auth";
+import {
+  createDirectus,
+  createItem,
+  deleteItems,
+  readItems,
+  rest,
+  staticToken,
+  updateItem,
+} from "@directus/sdk";
+
+import {
+  companyTierASchema,
+  internalInvestigationSchema,
+} from "@/lib/validations/crm";
 
 interface Schema {
-    companies: any[];
-    products: any[];
-    case_studies: any[];
-    survey_needs: any[];
-    compliance_risks: any[];
-    org_internal_investigations: any[];
-    audit_logs: any[];
+  companies: any[];
+  products: any[];
+  case_studies: any[];
+  survey_needs: any[];
+  compliance_risks: any[];
+  org_internal_investigations: any[];
+  audit_logs: any[];
 }
 
-const adminClient = createDirectus<Schema>(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055")
+const adminClient = createDirectus<Schema>(
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8055",
+)
   .with(staticToken(process.env.DIRECTUS_STATIC_TOKEN || ""))
   .with(rest());
 
-async function logAuditEvent(action: string, targetType: string, targetId: string, userId: string, details: any) {
+async function logAuditEvent(
+  action: string,
+  targetType: string,
+  targetId: string,
+  userId: string,
+  details: any,
+) {
   try {
-    await adminClient.request(createItem('audit_logs', {
-      id: crypto.randomUUID(),
-      action,
-      target_type: targetType,
-      target_id: targetId,
-      user_id: userId || 'unknown',
-      details: JSON.stringify(details),
-      ip_address: 'server',
-      created_at: new Date().toISOString()
-    }));
+    await adminClient.request(
+      createItem("audit_logs", {
+        id: crypto.randomUUID(),
+        action,
+        target_type: targetType,
+        target_id: targetId,
+        user_id: userId || "unknown",
+        details: JSON.stringify(details),
+        ip_address: "server",
+        created_at: new Date().toISOString(),
+      }),
+    );
   } catch (e) {
     console.error("Failed to log audit event:", e);
   }
@@ -47,7 +69,8 @@ export async function updateCompanyTierA(companyId: string, data: any) {
     // but maintain the same data dimensions.
     // surveyFormSchema.partial().parse(data);
 
-    await adminClient.request(updateItem('companies', companyId, {
+    await adminClient.request(
+      updateItem("companies", companyId, {
         company_name: data.company_name,
         credit_code: data.credit_code,
         established_date: data.established_date,
@@ -75,72 +98,151 @@ export async function updateCompanyTierA(companyId: string, data: any) {
         core_business: data.core_business,
         expected_resources: data.expected_resources,
         key_clients_claimed: data.key_clients_claimed,
+        credit_code_status: data.credit_code_status,
+        evidence_status: data.evidence_status,
+        contact_status: data.contact_status,
+        completion_rate: data.completion_rate,
+        recommended_scenarios: data.recommended_scenarios,
+        secretariat_comments: data.secretariat_comments,
         rejection_reason: data.rejection_reason,
         status: data.status,
-        info_updated_at: new Date().toISOString().split('T')[0],
-    }));
+        info_updated_at: new Date().toISOString().split("T")[0],
+      }),
+    );
 
     // Update Survey Needs (handle both nested and flattened formats)
-    await adminClient.request(deleteItems("survey_needs", { filter: { company_id: { _eq: companyId } } }));
-    
+    await adminClient.request(
+      deleteItems("survey_needs", {
+        filter: { company_id: { _eq: companyId } },
+      }),
+    );
+
     // In the new unified form, these are flattened
     const needsPayload = {
-        company_id: companyId,
-        financing_need: data.financing_need || data.survey_needs?.[0]?.financing_need,
-        market_need: data.market_need || data.survey_needs?.[0]?.market_need,
-        tech_need: data.tech_need || data.survey_needs?.[0]?.tech_need,
-        compute_pain_points: data.compute_pain_points || data.survey_needs?.[0]?.compute_pain_points,
-        policy_intent: data.policy_intent || data.survey_needs?.[0]?.policy_intent,
-        tech_complement_desc: data.tech_complement_desc || data.survey_needs?.[0]?.tech_complement_desc,
+      company_id: companyId,
+      financing_need:
+        data.financing_need || data.survey_needs?.[0]?.financing_need,
+      market_needs:
+        data.market_need ||
+        data.survey_needs?.[0]?.market_need ||
+        data.survey_needs?.[0]?.market_needs,
+      market_need: data.market_need || data.survey_needs?.[0]?.market_need,
+      tech_needs:
+        data.tech_need ||
+        data.survey_needs?.[0]?.tech_need ||
+        data.survey_needs?.[0]?.tech_needs,
+      tech_need: data.tech_need || data.survey_needs?.[0]?.tech_need,
+      compute_pain_points:
+        data.compute_pain_points || data.survey_needs?.[0]?.compute_pain_points,
+      policy_intent:
+        data.policy_intent || data.survey_needs?.[0]?.policy_intent,
+      tech_complement_desc:
+        data.tech_complement_desc ||
+        data.survey_needs?.[0]?.tech_complement_desc,
+      ticket_status: data.survey_needs?.[0]?.ticket_status || "pending",
     };
-    
-    if (Object.values(needsPayload).some(v => Array.isArray(v) ? v.length > 0 : !!v)) {
-        await adminClient.request(createItem('survey_needs', needsPayload));
+
+    if (
+      Object.values(needsPayload).some((v) =>
+        Array.isArray(v) ? v.length > 0 : !!v,
+      )
+    ) {
+      await adminClient.request(createItem("survey_needs", needsPayload));
     }
 
     // Update Compliance Risks
-    await adminClient.request(deleteItems("compliance_risks", { filter: { company_id: { _eq: companyId } } }));
-    
+    await adminClient.request(
+      deleteItems("compliance_risks", {
+        filter: { company_id: { _eq: companyId } },
+      }),
+    );
+
     const risksPayload = {
-        company_id: companyId,
-        data_security_measures: data.data_security_measures || data.compliance_risks?.[0]?.data_security_measures,
-        has_mlps_certification: data.has_mlps_certification ?? data.compliance_risks?.[0]?.has_mlps_certification,
-        processes_pii: data.processes_pii ?? data.compliance_risks?.[0]?.processes_pii,
+      company_id: companyId,
+      data_security_measures:
+        data.data_security_measures ||
+        data.compliance_risks?.[0]?.data_security_measures,
+      has_mlps_certification:
+        data.has_mlps_certification ??
+        data.compliance_risks?.[0]?.has_mlps_certification,
+      processes_pii:
+        data.processes_pii ?? data.compliance_risks?.[0]?.processes_pii,
     };
 
-    if (risksPayload.data_security_measures || risksPayload.has_mlps_certification || risksPayload.processes_pii) {
-        await adminClient.request(createItem('compliance_risks', risksPayload));
+    if (
+      risksPayload.data_security_measures ||
+      risksPayload.has_mlps_certification ||
+      risksPayload.processes_pii
+    ) {
+      await adminClient.request(createItem("compliance_risks", risksPayload));
     }
 
     // Update Products
     if (data.products) {
-        await adminClient.request(deleteItems("products", { filter: { company_id: { _eq: companyId } } }));
-        for (const p of data.products) {
-            await adminClient.request(createItem("products", { 
-              ...p, 
-              id: crypto.randomUUID(), 
-              company_id: companyId 
-            }));
-        }
+      await adminClient.request(
+        deleteItems("products", { filter: { company_id: { _eq: companyId } } }),
+      );
+      for (const p of data.products) {
+        await adminClient.request(
+          createItem("products", {
+            id: crypto.randomUUID(),
+            company_id: companyId,
+            name: p.name || p.product_name || "",
+            product_name: p.name || p.product_name || "",
+            form_factor: p.form_factor || p.product_type || "",
+            product_type: p.form_factor || p.product_type || "",
+            maturity_stage: p.maturity_stage || "",
+            description: p.description || p.product_description || "",
+            product_description: p.description || p.product_description || "",
+            advantage: p.advantages || p.advantage || "",
+            category: p.category || "",
+            tech_stack: p.tech_stack || "",
+            model_preference: p.model_preference || [],
+            agent_capabilities: p.agent_capabilities || [],
+            data_capabilities: p.data_capabilities || [],
+            engineering_capabilities: p.engineering_capabilities || [],
+            integration_capabilities: p.integration_capabilities || [],
+            delivery_cycle_months: p.delivery_cycle_months || null,
+            prerequisites: p.prerequisites || "",
+            pricing_model: p.pricing_model || "",
+            pilot_mode: p.pilot_mode || "",
+            case_industries: p.case_industries || [],
+          }),
+        );
+      }
     }
 
     // Update Case Studies
     if (data.case_studies) {
-        await adminClient.request(deleteItems("case_studies", { filter: { company_id: { _eq: companyId } } }));
-        for (const c of data.case_studies) {
-            await adminClient.request(createItem("case_studies", { 
-              ...c, 
-              id: crypto.randomUUID(), 
-              company_id: companyId, 
-              is_live: c.is_live || false 
-            }));
-        }
+      await adminClient.request(
+        deleteItems("case_studies", {
+          filter: { company_id: { _eq: companyId } },
+        }),
+      );
+      for (const c of data.case_studies) {
+        await adminClient.request(
+          createItem("case_studies", {
+            ...c,
+            title: c.title || c.case_title || "",
+            case_title: c.title || c.case_title || "",
+            id: crypto.randomUUID(),
+            company_id: companyId,
+            is_live: c.is_live || false,
+          }),
+        );
+      }
     }
 
-    await logAuditEvent('UPDATE_COMPANY', 'companies', companyId, session.user.id || 'unknown', {
-      status: data.status,
-      rejection_reason: data.rejection_reason
-    });
+    await logAuditEvent(
+      "UPDATE_COMPANY",
+      "companies",
+      companyId,
+      session.user.id || "unknown",
+      {
+        status: data.status,
+        rejection_reason: data.rejection_reason,
+      },
+    );
 
     revalidatePath(`/admin/companies/${companyId}`);
     return { status: "success" };
@@ -151,41 +253,49 @@ export async function updateCompanyTierA(companyId: string, data: any) {
 }
 
 export async function addInternalInvestigation(companyId: string, data: any) {
-    try {
-      const session = await auth();
-      if (!session?.user || session.user.role !== "ADMIN") {
-        throw new Error("Unauthorized");
-      }
-  
-      internalInvestigationSchema.parse(data);
-  
-      const investigationId = crypto.randomUUID();
-      await adminClient.request(createItem('org_internal_investigations', {
-          id: investigationId,
-          company_id: companyId,
-          investigator: session.user.name || "Admin",
-          investigation_date: new Date().toISOString(),
-          actual_capacity: data.actual_capacity,
-          technical_team_eval: data.technical_team_eval,
-          real_key_clients: data.real_key_clients,
-          cooperation_willingness: data.cooperation_willingness,
-          internal_notes: data.internal_notes,
-          structured_tags: data.structured_tags,
-          actual_team_size: data.actual_team_size,
-          tech_maturity_score: data.tech_maturity_score,
-          market_influence_score: data.market_influence_score,
-          risk_level: data.risk_level
-      }));
-
-      await logAuditEvent('ADD_INVESTIGATION', 'org_internal_investigations', investigationId, session.user.id || 'unknown', {
-        company_id: companyId,
-        risk_level: data.risk_level
-      });
-  
-      revalidatePath(`/admin/companies/${companyId}`);
-      return { status: "success" };
-    } catch (error: any) {
-      console.error("Action error (addInternalInvestigation):", error);
-      return { status: "error", message: error.message };
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      throw new Error("Unauthorized");
     }
+
+    internalInvestigationSchema.parse(data);
+
+    const investigationId = crypto.randomUUID();
+    await adminClient.request(
+      createItem("org_internal_investigations", {
+        id: investigationId,
+        company_id: companyId,
+        investigator: session.user.name || "Admin",
+        investigation_date: new Date().toISOString(),
+        actual_capacity: data.actual_capacity,
+        technical_team_eval: data.technical_team_eval,
+        real_key_clients: data.real_key_clients,
+        cooperation_willingness: data.cooperation_willingness,
+        internal_notes: data.internal_notes,
+        structured_tags: data.structured_tags,
+        actual_team_size: data.actual_team_size,
+        tech_maturity_score: data.tech_maturity_score,
+        market_influence_score: data.market_influence_score,
+        risk_level: data.risk_level,
+      }),
+    );
+
+    await logAuditEvent(
+      "ADD_INVESTIGATION",
+      "org_internal_investigations",
+      investigationId,
+      session.user.id || "unknown",
+      {
+        company_id: companyId,
+        risk_level: data.risk_level,
+      },
+    );
+
+    revalidatePath(`/admin/companies/${companyId}`);
+    return { status: "success" };
+  } catch (error: any) {
+    console.error("Action error (addInternalInvestigation):", error);
+    return { status: "error", message: error.message };
+  }
 }
